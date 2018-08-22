@@ -2,7 +2,7 @@
 
 RED Connector SSH is part of the Curious Containers project.
 
-For more information please refer to the Curious Containers [documentation](https://curious-containers.github.io/).
+For more information please refer to the Curious Containers [documentation](https://www.curious-containers.cc/).
 
 ## Acknowledgements
 
