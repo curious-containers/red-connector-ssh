@@ -10,8 +10,8 @@ sftp_schema = {
         'port': {'type': 'integer'},
         'username': {'type': 'string'},
         'password': {'type': 'string'},
-        'file_dir': {'type': 'string'},
-        'file_name': {'type': 'string'}
+        'fileDir': {'type': 'string'},
+        'fileName': {'type': 'string'}
     },
     'additionalProperties': False,
     'required': ['host', 'username', 'password', 'file_dir', 'file_name']
@@ -25,8 +25,8 @@ class Sftp:
         port = access.get('port', 22)
         username = access['username']
         password = access['password']
-        file_dir = access['file_dir']
-        file_name = access['file_name']
+        file_dir = access['fileDir']
+        file_name = access['fileName']
 
         remote_file_path = os.path.join(file_dir, file_name)
 
@@ -67,8 +67,8 @@ class Sftp:
         port = access.get('port', 22)
         username = access['username']
         password = access['password']
-        file_dir = access['file_dir']
-        file_name = access['file_name']
+        file_dir = access['fileDir']
+        file_name = access['fileName']
 
         remote_file_path = os.path.join(file_dir, file_name)
 
