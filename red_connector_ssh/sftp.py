@@ -14,7 +14,7 @@ sftp_schema = {
         'fileName': {'type': 'string'}
     },
     'additionalProperties': False,
-    'required': ['host', 'username', 'password', 'file_dir', 'file_name']
+    'required': ['host', 'username', 'password', 'fileDir', 'fileName']
 }
 
 
