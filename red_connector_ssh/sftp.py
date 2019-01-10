@@ -1,8 +1,9 @@
 import os
 import jsonschema
 import stat
+import tempfile
 from scp import SCPClient, SCPException
-from paramiko import SSHClient, AutoAddPolicy
+from paramiko import SSHClient, AutoAddPolicy, RSAKey
 
 from cc_core.commons.schemas.cwl import URL_SCHEME_IDENTIFIER
 
@@ -18,11 +19,13 @@ sftp_schema = {
         'port': {'type': 'integer'},
         'username': {'type': 'string'},
         'password': {'type': 'string'},
+        'privateKey': {'type': 'string'},
+        'passphrase': {'type': 'string'},
         'fileDir': {'type': 'string'},
         'fileName': {'type': 'string'}
     },
     'additionalProperties': False,
-    'required': ['host', 'username', 'password', 'fileDir', 'fileName']
+    'required': ['host', 'username', 'fileDir', 'fileName']
 }
 
 sftp_directory_schema = {
@@ -32,11 +35,62 @@ sftp_directory_schema = {
         'port': {'type': 'integer'},
         'username': {'type': 'string'},
         'password': {'type': 'string'},
+        'privateKey': {'type': 'string'},
+        'passphrase': {'type': 'string'},
         'dirName': {'type': 'string'},
     },
     'additionalProperties': False,
-    'required': ['host', 'username', 'password', 'dirName']
+    'required': ['host', 'username', 'dirName']
 }
+
+
+def _create_temp_file(content):
+    """
+    Creates a temporary file that resists in memory.
+    :param content:
+    :return:
+    """
+    tmp_file = tempfile.SpooledTemporaryFile(max_size=1000000, mode='w+')
+    tmp_file.write(content)
+    tmp_file.seek(0)
+    return tmp_file
+
+
+def _create_ssh_client(host, username, port=22, password=None, private_key=None, passphrase=None):
+    """
+    Creates and returns a connected SSHClient.
+    If a password is supplied the connection is created using this password.
+    If no password is supplied a valid private key must be present. If this private key is encrypted the associated
+    passphrase must be supplied.
+
+    :param host: The host to connect to
+    :param username: The username which is used to connect to the ssh host
+    :param port: The port number to connect to. Default is 22
+    :param password: The password to authenticate
+    :param private_key: A valid private RSA key as string
+    :param passphrase: A passphrase to decrypt the private key, if the private key is encrypted
+    :raise Exception: If neither password nor private_key is given
+    :raise SSHException: If the given private_key, username or password is invalid
+    :raise socket.gaierror: If the given host is not known
+    :return: A connected paramiko.SSHClient
+    """
+    client = SSHClient()
+    client.set_missing_host_key_policy(AutoAddPolicy())
+    if password is not None:
+        client.connect(
+            host,
+            port=port,
+            username=username,
+            password=password
+        )
+    elif private_key is not None:
+        key_file = _create_temp_file(private_key)
+        pkey = RSAKey.from_private_key(key_file, password=passphrase)
+        key_file.close()
+        client.connect(host, username=username, pkey=pkey)
+    else:
+        raise Exception('At least password or private_key must be present.')
+    return client
 
 
 class Sftp:
@@ -45,26 +99,24 @@ class Sftp:
         host = access['host']
         port = access.get('port', 22)
         username = access['username']
-        password = access['password']
+        password = access.get('password')
         file_dir = access['fileDir']
         file_name = access['fileName']
+        private_key = access.get('privateKey')
+        passphrase = access.get('passphrase')
 
-        remote_file_path = os.path.join(file_dir, file_name)
-
-        with SSHClient() as client:
-            client.set_missing_host_key_policy(AutoAddPolicy())
-            client.connect(
-                host,
-                port=port,
-                username=username,
-                password=password
-            )
+        with _create_ssh_client(host, username, port, password, private_key, passphrase) as client:
             with client.open_sftp() as sftp:
+                remote_file_path = os.path.join(file_dir, file_name)
                 sftp.get(remote_file_path, internal['path'])
 
     @staticmethod
     def receive_validate(access):
         jsonschema.validate(access, sftp_schema)
+
+        # At least password or privateKey must be present
+        if ('password' not in access) and ('privateKey' not in access):
+            raise Exception('At least "password" or "privateKey" must be present.')
 
     @staticmethod
     def _ssh_mkdir(sftp, remote_directory):
@@ -87,20 +139,15 @@ class Sftp:
         host = access['host']
         port = access.get('port', 22)
         username = access['username']
-        password = access['password']
+        password = access.get('password')
         file_dir = access['fileDir']
         file_name = access['fileName']
+        private_key = access.get('privateKey')
+        passphrase = access.get('passphrase')
 
         remote_file_path = os.path.join(file_dir, file_name)
 
-        with SSHClient() as client:
-            client.set_missing_host_key_policy(AutoAddPolicy())
-            client.connect(
-                host,
-                port=port,
-                username=username,
-                password=password
-            )
+        with _create_ssh_client(host, username, port, password, private_key, passphrase) as client:
             with client.open_sftp() as sftp:
                 Sftp._ssh_mkdir(sftp, file_dir)
                 sftp.put(
@@ -167,25 +214,24 @@ class Sftp:
         :raise Exception: If the remote host is not accessible or the listing specifies a directory or a file, which is
                           not present on the remote machine.
         """
-        ssh_client = SSHClient()
-        ssh_client.set_missing_host_key_policy(AutoAddPolicy())
-        try:
-            ssh_client.connect(access['host'], username=access['username'], password=access['password'])
-        except Exception as e:
-            raise Exception('Could not connect to remote host "{}" with the username "{}" and the given password.\n{}'
-                            .format(access['host'], access['username'], str(e)))
 
-        local_path = internal[URL_SCHEME_IDENTIFIER]
+        host = access['host']
+        port = access.get('port', 22)
+        username = access['username']
+        password = access.get('password')
+        private_key = access.get('privateKey')
+        passphrase = access.get('passphrase')
         remote_path = access['dirName']
 
-        with SCPClient(ssh_client.get_transport()) as scp_client:
-            if listing is None:
-                scp_client.get(remote_path, local_path, recursive=True)
-            else:
-                os.mkdir(local_path, DEFAULT_DIRECTORY_MODE)
-                Sftp.fetch_directory(listing, scp_client, local_path, remote_path)
+        with _create_ssh_client(host, username, port, password, private_key, passphrase) as ssh_client:
+            local_path = internal[URL_SCHEME_IDENTIFIER]
 
-        ssh_client.close()
+            with SCPClient(ssh_client.get_transport()) as scp_client:
+                if listing is None:
+                    scp_client.get(remote_path, local_path, recursive=True)
+                else:
+                    os.mkdir(local_path, DEFAULT_DIRECTORY_MODE)
+                    Sftp.fetch_directory(listing, scp_client, local_path, remote_path)
 
     @staticmethod
     def receive_directory_validate(access):
@@ -193,3 +239,7 @@ class Sftp:
             jsonschema.validate(access, sftp_directory_schema)
         except jsonschema.ValidationError as e:
             raise Exception(e.context)
+
+        # At least password or privateKey must be present
+        if ('password' not in access) and ('privateKey' not in access):
+            raise Exception('At least "password" or "privateKey" must be present.')
