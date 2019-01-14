@@ -5,8 +5,6 @@ import tempfile
 from scp import SCPClient, SCPException
 from paramiko import SSHClient, AutoAddPolicy, RSAKey
 
-from cc_core.commons.schemas.cwl import URL_SCHEME_IDENTIFIER
-
 
 DEFAULT_DIRECTORY_MODE = stat.S_IWUSR | stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH \
                          | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
@@ -201,7 +199,7 @@ class Sftp:
     @staticmethod
     def receive_directory(access, internal, listing):
         """
-        Fetches a directory from a ssh server and stores at under the path given by internal[URL_SCHEME_IDENTIFIER]
+        Fetches a directory from a ssh server and stores at under the path given by internal['path']
 
         :param access: A dictionary containing access information. Has the following keys
                        - 'host': The host to connect to
@@ -224,7 +222,7 @@ class Sftp:
         remote_path = access['dirName']
 
         with _create_ssh_client(host, username, port, password, private_key, passphrase) as ssh_client:
-            local_path = internal[URL_SCHEME_IDENTIFIER]
+            local_path = internal['path']
 
             with SCPClient(ssh_client.get_transport()) as scp_client:
                 if listing is None:
