@@ -5,9 +5,11 @@ import sys
 from argparse import ArgumentParser
 import paramiko
 
+WARNING = 'WARNING: Do not use private keys, if you do not trust the executor of the experiment. There is no problem' \
+          ' of using private keys for "faice agent red".'
+
 DESCRIPTION = 'Converts a given private key file into an entry for a red connector. This is useful, if you want to ' \
-              'enable ssh access in an experiment via a private key.\nWARNING: Do not use private keys, if you do ' \
-              'not trust the executor of the experiment. There is no problem of using it with "faice agent red".'
+              'enable ssh access in an experiment via a private key.\n{}'.format(WARNING)
 
 DEFAULT_OUTPUT_FILE = 'variables.yml'
 DEFAULT_VARIABLE_KEY = 'privateKey'
@@ -18,6 +20,8 @@ def main():
     parser = ArgumentParser(description=DESCRIPTION)
     attach_args(parser)
     args = parser.parse_args()
+
+    print(WARNING)
 
     key_file_path = args.key_file
 
@@ -56,6 +60,8 @@ def main():
         output_file.write('{}: \"{}\"\n'.format(args.variable_key, key_string))
         if args.passphrase:
             output_file.write('{}: \"{}\"\n'.format(DEFAULT_PASSPHRASE_KEY, args.passphrase))
+
+    print('Success: output file has been written to "{}"'.format(args.output_file))
 
 
 def attach_args(parser):
