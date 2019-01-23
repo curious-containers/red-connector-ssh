@@ -1,12 +1,10 @@
-from cc_connector_cli.connector_cli import create_parser
+from cc_connector_cli.connector_cli import run_connector
 from red_connector_ssh.sftp import Sftp
 
 
-def main():
-    cli = create_parser(Sftp)
-    args = cli.parse_args()
-    print('args: {}'.format(args.__dict__))
+def run_sftp():
+    run_connector(Sftp)
 
 
 if __name__ == '__main__':
-    main()
+    run_sftp()
