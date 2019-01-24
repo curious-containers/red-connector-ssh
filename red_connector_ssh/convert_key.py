@@ -67,7 +67,7 @@ def main():
 def attach_args(parser):
     parser.add_argument(
         'key_file', action='store', type=str, metavar='KEYFILE',
-        help='The private key file to convert'
+        help='The private key file to convert.'
     )
     parser.add_argument(
         '--format', action='store', type=str, metavar='FORMAT', choices=['json', 'yaml', 'yml'], default='yaml',
@@ -76,10 +76,10 @@ def attach_args(parser):
     parser.add_argument(
         '--passphrase', action='store', type=str, default=None,
         help='Passphrase to validate the given key file. If no validation is wanted, you can bypass with'
-             '--no-validation'
+             '--no-validation.'
     )
     parser.add_argument(
-        '--no-validation', action='store_true', help='bypass key validation'
+        '--no-validation', action='store_true', help='Bypass key validation.'
     )
     parser.add_argument(
         '--output-file', action='store', type=str, default=DEFAULT_OUTPUT_FILE,
@@ -87,7 +87,7 @@ def attach_args(parser):
     )
     parser.add_argument(
         '--variable-key', action='store', type=str, default=DEFAULT_VARIABLE_KEY,
-        help='The variable key in the output file. Default is "{}"'.format(DEFAULT_VARIABLE_KEY)
+        help='The variable key in the output file. Default is "{}".'.format(DEFAULT_VARIABLE_KEY)
     )
 
 

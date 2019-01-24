@@ -91,7 +91,7 @@ def _create_ssh_client(host, username, port=22, password=None, private_key=None,
     return client
 
 
-class Sftp:
+class Ssh:
     @staticmethod
     def receive(access, internal):
         host = access['host']
@@ -128,7 +128,7 @@ class Sftp:
             sftp.chdir(remote_directory)
         except IOError:
             dirname, basename = os.path.split(remote_directory.rstrip('/'))
-            Sftp._ssh_mkdir(sftp, dirname)
+            Ssh._ssh_mkdir(sftp, dirname)
             sftp.mkdir(basename)
             sftp.chdir(basename)
 
@@ -147,7 +147,7 @@ class Sftp:
 
         with _create_ssh_client(host, username, port, password, private_key, passphrase) as client:
             with client.open_sftp() as sftp:
-                Sftp._ssh_mkdir(sftp, file_dir)
+                Ssh._ssh_mkdir(sftp, file_dir)
                 sftp.put(
                     internal['path'],
                     os.path.join(remote_file_path)
@@ -197,7 +197,7 @@ class Sftp:
                 os.mkdir(local_path, DEFAULT_DIRECTORY_MODE)
                 listing = sub.get('listing')
                 if listing:
-                    Sftp.fetch_directory(listing, scp_client, base_directory, remote_directory, sub_path)
+                    Ssh.fetch_directory(listing, scp_client, base_directory, remote_directory, sub_path)
 
     @staticmethod
     def receive_directory(access, internal, listing):
@@ -232,7 +232,7 @@ class Sftp:
                     scp_client.get(remote_path, local_path, recursive=True)
                 else:
                     os.mkdir(local_path, DEFAULT_DIRECTORY_MODE)
-                    Sftp.fetch_directory(listing, scp_client, local_path, remote_path)
+                    Ssh.fetch_directory(listing, scp_client, local_path, remote_path)
 
     @staticmethod
     def receive_directory_validate(access):
