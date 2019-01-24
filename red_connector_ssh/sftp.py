@@ -158,7 +158,10 @@ class Sftp:
         try:
             jsonschema.validate(access, sftp_schema)
         except jsonschema.ValidationError as e:
-            raise Exception(e.context)
+            if e.context:
+                raise Exception(e.context)
+            else:
+                raise Exception(str(e))
 
     @staticmethod
     def fetch_directory(listing, scp_client, base_directory, remote_directory, path="./"):
@@ -236,7 +239,10 @@ class Sftp:
         try:
             jsonschema.validate(access, sftp_directory_schema)
         except jsonschema.ValidationError as e:
-            raise Exception(e.context)
+            if e.context:
+                raise Exception(e.context)
+            else:
+                raise Exception(str(e))
 
         # At least password or privateKey must be present
         if ('password' not in access) and ('privateKey' not in access):
