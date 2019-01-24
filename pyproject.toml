@@ -17,5 +17,5 @@ scp = "^0.13.0"
 [tool.poetry.dev-dependencies]
 
 [tool.poetry.scripts]
-red-connector-ssh = 'red_connector_ssh.main:run_ssh'
+red-connector-ssh = 'red_connector_ssh.main:main'
 red-convert-ssh-key = 'red_connector_ssh.convert_key:main'
