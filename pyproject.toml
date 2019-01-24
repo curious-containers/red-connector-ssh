@@ -17,3 +17,4 @@ scp = "^0.13.0"
 [tool.poetry.dev-dependencies]
 
 [tool.poetry.scripts]
+red-connector-sftp = 'red_connector_ssh.main:run_sftp'
