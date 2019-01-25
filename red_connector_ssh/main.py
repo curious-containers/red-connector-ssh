@@ -5,3 +5,7 @@ from red_connector_ssh.version import VERSION
 
 def main():
     run_connector(Sftp, version=VERSION)
+
+
+if __name__ == '__main__':
+    main()
