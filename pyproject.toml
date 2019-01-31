@@ -13,7 +13,7 @@ python = "^3.4"
 jsonschema = "^2.6"
 paramiko = "^2.4"
 scp = "^0.13.0"
-cc-connector-cli = "~0.1.0"
+cc-connector-cli = "^0.1.0"
 
 [tool.poetry.dev-dependencies]
 
