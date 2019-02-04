@@ -1,5 +1,6 @@
 import os
 import jsonschema
+import shutil
 import stat
 import tempfile
 from scp import SCPClient, SCPException
@@ -115,6 +116,17 @@ class Sftp:
         # At least password or privateKey must be present
         if ('password' not in access) and ('privateKey' not in access):
             raise Exception('At least "password" or "privateKey" must be present.')
+
+    @staticmethod
+    def receive_cleanup(internal):
+        """
+        Removes the given file.
+
+        :param internal: A dictionary containing a path to the file to remove.
+        """
+        path = internal.get('path')
+        if path:
+            os.remove(path)
 
     @staticmethod
     def _ssh_mkdir(sftp, remote_directory):
@@ -247,3 +259,14 @@ class Sftp:
         # At least password or privateKey must be present
         if ('password' not in access) and ('privateKey' not in access):
             raise Exception('At least "password" or "privateKey" must be present.')
+
+    @staticmethod
+    def receive_directory_cleanup(internal):
+        """
+        Removes the given directory.
+
+        :param internal: A dictionary containing a path to the directory to remove.
+        """
+        path = internal.get('path')
+        if path:
+            shutil.rmtree(path)
