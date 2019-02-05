@@ -124,9 +124,7 @@ class Sftp:
 
         :param internal: A dictionary containing a path to the file to remove.
         """
-        path = internal.get('path')
-        if path:
-            os.remove(path)
+        os.remove(internal['path'])
 
     @staticmethod
     def _ssh_mkdir(sftp, remote_directory):
@@ -267,6 +265,4 @@ class Sftp:
 
         :param internal: A dictionary containing a path to the directory to remove.
         """
-        path = internal.get('path')
-        if path:
-            shutil.rmtree(path)
+        shutil.rmtree(internal['path'])

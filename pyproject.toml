@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "red-connector-ssh"
-version = "0.4"
+version = "0.5"
 authors = ["Christoph Jansen <Christoph.Jansen@htw-berlin.de>"]
 license = "AGPL-3.0"
 readme = "README.md"
@@ -13,7 +13,7 @@ python = "^3.4"
 jsonschema = "^2.6"
 paramiko = "^2.4"
 scp = "^0.13.0"
-cc-connector-cli = "^0.2.0"
+cc-connector-cli = "^0.3.0"
 
 [tool.poetry.dev-dependencies]
 
