@@ -5,23 +5,42 @@ import sys
 from argparse import ArgumentParser
 import paramiko
 
-WARNING = 'WARNING: Do not use private keys, if you do not trust the executor of the experiment. There is no problem' \
-          ' of using private keys for "faice agent red".'
-
-DESCRIPTION = 'Converts a given private key file into an entry for a red connector. This is useful, if you want to ' \
-              'enable ssh access in an experiment via a private key.\n{}'.format(WARNING)
+CONVERT_KEY_DESCRIPTION = 'Converts a given private key file into an entry for a red connector. ' \
+                          'This is useful, if you want to enable ssh access in an experiment via a private key.'
 
 DEFAULT_OUTPUT_FILE = 'variables.yml'
 DEFAULT_VARIABLE_KEY = 'privateKey'
 DEFAULT_PASSPHRASE_KEY = 'passphrase'
 
 
-def main():
-    parser = ArgumentParser(description=DESCRIPTION)
-    attach_args(parser)
-    args = parser.parse_args()
+def convert_key():
+    parser = ArgumentParser(description=CONVERT_KEY_DESCRIPTION)
+    parser.add_argument(
+        'key_file', action='store', type=str, metavar='KEYFILE',
+        help='The private key file to convert.'
+    )
+    parser.add_argument(
+        '--format', action='store', type=str, metavar='FORMAT', choices=['json', 'yaml', 'yml'], default='yaml',
+        help='Specify FORMAT for generated data as one of [json, yaml, yml]. Default is yaml.'
+    )
+    parser.add_argument(
+        '--passphrase', action='store', type=str, default=None,
+        help='Passphrase to validate the given key file. If no validation is wanted, you can bypass with '
+             '--no-validation.'
+    )
+    parser.add_argument(
+        '--no-validation', action='store_true', help='Bypass key validation.'
+    )
+    parser.add_argument(
+        '--output-file', action='store', type=str, default=DEFAULT_OUTPUT_FILE,
+        help='The output file to write. Default is "{}".'.format(DEFAULT_OUTPUT_FILE)
+    )
+    parser.add_argument(
+        '--variable-key', action='store', type=str, default=DEFAULT_VARIABLE_KEY,
+        help='The variable key in the output file. Default is "{}".'.format(DEFAULT_VARIABLE_KEY)
+    )
 
-    print(WARNING)
+    args = parser.parse_args()
 
     key_file_path = args.key_file
 
@@ -62,34 +81,3 @@ def main():
             output_file.write('{}: \"{}\"\n'.format(DEFAULT_PASSPHRASE_KEY, args.passphrase))
 
     print('Success: output file has been written to "{}"'.format(args.output_file))
-
-
-def attach_args(parser):
-    parser.add_argument(
-        'key_file', action='store', type=str, metavar='KEYFILE',
-        help='The private key file to convert.'
-    )
-    parser.add_argument(
-        '--format', action='store', type=str, metavar='FORMAT', choices=['json', 'yaml', 'yml'], default='yaml',
-        help='Specify FORMAT for generated data as one of [json, yaml, yml]. Default is yaml.'
-    )
-    parser.add_argument(
-        '--passphrase', action='store', type=str, default=None,
-        help='Passphrase to validate the given key file. If no validation is wanted, you can bypass with'
-             '--no-validation.'
-    )
-    parser.add_argument(
-        '--no-validation', action='store_true', help='Bypass key validation.'
-    )
-    parser.add_argument(
-        '--output-file', action='store', type=str, default=DEFAULT_OUTPUT_FILE,
-        help='The output file to write. Default is "{}".'.format(DEFAULT_OUTPUT_FILE)
-    )
-    parser.add_argument(
-        '--variable-key', action='store', type=str, default=DEFAULT_VARIABLE_KEY,
-        help='The variable key in the output file. Default is "{}".'.format(DEFAULT_VARIABLE_KEY)
-    )
-
-
-if __name__ == '__main__':
-    exit(main())
