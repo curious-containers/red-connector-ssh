@@ -1,15 +1,12 @@
 import os
 import tempfile
 import jsonschema
-import stat
 from shutil import which
 
 from paramiko import SSHClient, AutoAddPolicy, RSAKey
 from scp import SCPException
 
 DEFAULT_PORT = 22
-DEFAULT_DIRECTORY_MODE = stat.S_IWUSR | stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH \
-                         | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
 
 FUSERMOUNT_EXECUTABLES = ['fusermount3', 'fusermount']
 SSHFS_EXECUTABLES = ['sshfs']
@@ -159,10 +156,10 @@ def fetch_directory(listing, scp_client, base_directory, remote_directory, path=
                                 format(remote_path, str(e)))
 
         elif sub['class'] == 'Directory':
-            os.mkdir(local_path, DEFAULT_DIRECTORY_MODE)
+            os.mkdir(local_path)
             listing = sub.get('listing')
             if listing:
-                Sftp.fetch_directory(listing, scp_client, base_directory, remote_directory, sub_path)
+                fetch_directory(listing, scp_client, base_directory, remote_directory, sub_path)
 
 
 def validate(instance, schema):
