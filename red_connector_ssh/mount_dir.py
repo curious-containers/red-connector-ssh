@@ -94,7 +94,7 @@ def mount_dir_validate():
 
 
 def umount_dir():
-    parser = ArgumentParser(description=UMOUNT_DESCRIPTION)
+    parser = ArgumentParser(description=UMOUNT_DIR_DESCRIPTION)
     parser.add_argument(
         'local_dir_path', action='store', type=str, metavar='LOCALDIR',
         help='Local output dir path.'
