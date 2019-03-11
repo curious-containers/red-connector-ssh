@@ -1,20 +1,22 @@
 import binascii
 import os
 import sys
-
 from argparse import ArgumentParser
-import paramiko
 
-CONVERT_KEY_DESCRIPTION = 'Converts a given private key file into an entry for a red connector. ' \
-                          'This is useful, if you want to enable ssh access in an experiment via a private key.'
+import paramiko
+from red_connector_ssh.version import VERSION
+
+
+DESCRIPTION = 'Converts a given private key file into an entry for a red connector. This is useful, if you want to ' \
+              'enable ssh access in an experiment via a private key.'
 
 DEFAULT_OUTPUT_FILE = 'variables.yml'
 DEFAULT_VARIABLE_KEY = 'privateKey'
 DEFAULT_PASSPHRASE_KEY = 'passphrase'
 
 
-def convert_key():
-    parser = ArgumentParser(description=CONVERT_KEY_DESCRIPTION)
+def main():
+    parser = ArgumentParser(description=DESCRIPTION)
     parser.add_argument(
         'key_file', action='store', type=str, metavar='KEYFILE',
         help='The private key file to convert.'
@@ -39,6 +41,9 @@ def convert_key():
         '--variable-key', action='store', type=str, default=DEFAULT_VARIABLE_KEY,
         help='The variable key in the output file. Default is "{}".'.format(DEFAULT_VARIABLE_KEY)
     )
+    parser.add_argument(
+        '-v', '--version', action='version', version=VERSION
+    )
 
     args = parser.parse_args()
 
@@ -56,8 +61,11 @@ def convert_key():
             paramiko.RSAKey.from_private_key(key_file, password=args.passphrase)
             key_file.seek(0)
         except paramiko.ssh_exception.PasswordRequiredException:
-            print('The given private key file needs a passphrase for validation (see --help). If you want to'
-                  ' bypass validation run again with "--no-validation"', file=sys.stderr)
+            print(
+                'The given private key file needs a passphrase for validation (see --help). If you want to bypass '
+                'validation run again with "--no-validation"',
+                file=sys.stderr
+            )
             return 2
         except binascii.Error:
             print('The given private key file "{}" is not valid.'.format(key_file_path))

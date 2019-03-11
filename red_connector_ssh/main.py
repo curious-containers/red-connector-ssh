@@ -16,8 +16,6 @@ from red_connector_ssh.send_receive_dir import SEND_DIR_DESCRIPTION, SEND_DIR_VA
 from red_connector_ssh.mount_dir import mount_dir, mount_dir_validate, umount_dir
 from red_connector_ssh.mount_dir import MOUNT_DIR_DESCRIPTION, MOUNT_DIR_VALIDATE_DESCRIPTION, UMOUNT_DIR_DESCRIPTION
 
-from red_connector_ssh.convert_key import convert_key, CONVERT_KEY_DESCRIPTION
-
 
 CLI_VERSION = '0.1'
 SCRIPT_NAME = 'red-connector-ssh'
@@ -37,7 +35,6 @@ MODES = OrderedDict([
     ('mount-dir', {'main': mount_dir, 'description': MOUNT_DIR_DESCRIPTION}),
     ('mount-dir-validate', {'main': mount_dir_validate, 'description': MOUNT_DIR_VALIDATE_DESCRIPTION}),
     ('umount-dir', {'main': umount_dir, 'description': UMOUNT_DIR_DESCRIPTION}),
-    ('convert-key', {'main': convert_key, 'description': CONVERT_KEY_DESCRIPTION})
 ])
 
 
