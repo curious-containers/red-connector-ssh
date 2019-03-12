@@ -1,3 +1,4 @@
+import json
 from argparse import ArgumentParser
 
 from scp import SCPClient
@@ -14,6 +15,9 @@ SEND_DIR_VALIDATE_DESCRIPTION = 'Validate access data for send-dir.'
 
 
 def _receive_dir(access, local_dir_path, listing):
+    with open(access) as f:
+        access = json.load(f)
+
     auth = access['auth']
     dir_path = access['dirPath']
 
@@ -33,14 +37,23 @@ def _receive_dir(access, local_dir_path, listing):
 
 
 def _receive_dir_validate(access, listing):
+    with open(access) as f:
+        access = json.load(f)
+
     validate(access, DIR_SCHEMA)
 
 
 def _send_dir(access, local_dir_path, listing):
+    with open(access) as f:
+        access = json.load(f)
+
     raise NotImplementedError('send-dir is not yet implemented')
 
 
 def _send_dir_validate(access, listing):
+    with open(access) as f:
+        access = json.load(f)
+
     raise NotImplementedError('send-dir is not yet implemented')
 
 

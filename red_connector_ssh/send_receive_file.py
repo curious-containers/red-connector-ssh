@@ -1,4 +1,5 @@
 import os
+import json
 from argparse import ArgumentParser
 
 from red_connector_ssh.schemas import FILE_SCHEMA
@@ -13,6 +14,9 @@ SEND_FILE_VALIDATE_DESCRIPTION = 'Validate access data for send-file.'
 
 
 def _receive_file(access, local_file_path):
+    with open(access) as f:
+        access = json.load(f)
+
     auth = access['auth']
 
     with create_ssh_client(
@@ -28,10 +32,16 @@ def _receive_file(access, local_file_path):
 
 
 def _receive_file_validate(access):
+    with open(access) as f:
+        access = json.load(f)
+
     validate(access, FILE_SCHEMA)
 
 
 def _send_file(access, local_file_path):
+    with open(access) as f:
+        access = json.load(f)
+
     auth = access['auth']
     file_path = access['filePath']
     dir_path = os.path.dirname(file_path)
@@ -50,6 +60,9 @@ def _send_file(access, local_file_path):
 
 
 def _send_file_validate(access):
+    with open(access) as f:
+        access = json.load(f)
+
     validate(access, FILE_SCHEMA)
 
 
