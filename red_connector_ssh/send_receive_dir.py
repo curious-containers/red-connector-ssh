@@ -18,6 +18,10 @@ def _receive_dir(access, local_dir_path, listing):
     with open(access) as f:
         access = json.load(f)
 
+    if listing:
+        with open(listing) as f:
+            listing = json.load(f)
+
     auth = access['auth']
     dir_path = access['dirPath']
 
@@ -40,6 +44,10 @@ def _receive_dir_validate(access, listing):
     with open(access) as f:
         access = json.load(f)
 
+    if listing:
+        with open(listing) as f:
+            listing = json.load(f)
+
     validate(access, DIR_SCHEMA)
 
 
@@ -47,12 +55,20 @@ def _send_dir(access, local_dir_path, listing):
     with open(access) as f:
         access = json.load(f)
 
+    if listing:
+        with open(listing) as f:
+            listing = json.load(f)
+
     raise NotImplementedError('send-dir is not yet implemented')
 
 
 def _send_dir_validate(access, listing):
     with open(access) as f:
         access = json.load(f)
+
+    if listing:
+        with open(listing) as f:
+            listing = json.load(f)
 
     raise NotImplementedError('send-dir is not yet implemented')
 
