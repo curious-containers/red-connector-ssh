@@ -3,7 +3,9 @@ import tempfile
 import subprocess
 from argparse import ArgumentParser
 
-from red_connector_ssh.helpers import validate, create_password_command, find_executables, DEFAULT_PORT
+import jsonschema
+
+from red_connector_ssh.helpers import create_password_command, find_executables, DEFAULT_PORT, graceful_error
 from red_connector_ssh.schemas import MOUNT_DIR_SCHEMA
 
 
@@ -58,7 +60,7 @@ def _mount_dir_validate(access):
     with open(access) as f:
         access = json.load(f)
     
-    validate(access, MOUNT_DIR_SCHEMA)
+    jsonschema.validate(access, MOUNT_DIR_SCHEMA)
     _ = find_executables()
 
 
@@ -76,6 +78,7 @@ def _umount_dir(local_dir_path):
         )
 
 
+@graceful_error
 def mount_dir():
     parser = ArgumentParser(description=MOUNT_DIR_DESCRIPTION)
     parser.add_argument(
@@ -90,6 +93,7 @@ def mount_dir():
     _mount_dir(**args.__dict__)
 
 
+@graceful_error
 def mount_dir_validate():
     parser = ArgumentParser(description=MOUNT_DIR_VALIDATE_DESCRIPTION)
     parser.add_argument(
@@ -100,6 +104,7 @@ def mount_dir_validate():
     _mount_dir_validate(**args.__dict__)
 
 
+@graceful_error
 def umount_dir():
     parser = ArgumentParser(description=UMOUNT_DIR_DESCRIPTION)
     parser.add_argument(

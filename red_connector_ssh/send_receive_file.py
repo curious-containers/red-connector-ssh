@@ -2,8 +2,10 @@ import os
 import json
 from argparse import ArgumentParser
 
+import jsonschema
+
 from red_connector_ssh.schemas import FILE_SCHEMA
-from red_connector_ssh.helpers import create_ssh_client, ssh_mkdir, validate, DEFAULT_PORT
+from red_connector_ssh.helpers import create_ssh_client, ssh_mkdir, DEFAULT_PORT, graceful_error
 
 
 RECEIVE_FILE_DESCRIPTION = 'Receive input file from SSH server.'
@@ -35,7 +37,7 @@ def _receive_file_validate(access):
     with open(access) as f:
         access = json.load(f)
 
-    validate(access, FILE_SCHEMA)
+    jsonschema.validate(access, FILE_SCHEMA)
 
 
 def _send_file(access, local_file_path):
@@ -63,9 +65,10 @@ def _send_file_validate(access):
     with open(access) as f:
         access = json.load(f)
 
-    validate(access, FILE_SCHEMA)
+    jsonschema.validate(access, FILE_SCHEMA)
 
 
+@graceful_error
 def receive_file():
     parser = ArgumentParser(description=RECEIVE_FILE_DESCRIPTION)
     parser.add_argument(
@@ -80,6 +83,7 @@ def receive_file():
     _receive_file(**args.__dict__)
 
 
+@graceful_error
 def receive_file_validate():
     parser = ArgumentParser(description=RECEIVE_FILE_VALIDATE_DESCRIPTION)
     parser.add_argument(
@@ -90,6 +94,7 @@ def receive_file_validate():
     _receive_file_validate(**args.__dict__)
 
 
+@graceful_error
 def send_file():
     parser = ArgumentParser(description=SEND_FILE_DESCRIPTION)
     parser.add_argument(
@@ -104,6 +109,7 @@ def send_file():
     _send_file(**args.__dict__)
 
 
+@graceful_error
 def send_file_validate():
     parser = ArgumentParser(description=SEND_FILE_VALIDATE_DESCRIPTION)
     parser.add_argument(
