@@ -22,14 +22,14 @@ def graceful_error(func):
 
         except jsonschema.exceptions.ValidationError as e:
             if hasattr(e, 'context'):
-                print('JSON Schema validation error: {}'.format(e.context), file=sys.stderr)
+                print('{}:{}Context: {}'.format(repr(e), os.linesep, e.context), file=sys.stderr)
                 exit(1)
 
             print(repr(e), file=sys.stderr)
             exit(2)
 
         except Exception as e:
-            print(repr(e), file=sys.stderr)
+            print('{}:{}{}'.format(repr(e), os.linesep, e), file=sys.stderr)
             exit(3)
 
     return wrapper
