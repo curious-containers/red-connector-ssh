@@ -129,6 +129,9 @@ def create_ssh_client(host, port, username, password, private_key, passphrase):
     :raise socket.gaierror: If the given host is not known
     :return: A connected paramiko.SSHClient
     """
+    # TODO: remove this filter, if paramiko 2.5 is released
+    warnings.simplefilter('ignore', cryptography.utils.CryptographyDeprecationWarning)
+
     client = SSHClient()
     client.set_missing_host_key_policy(AutoAddPolicy())
     if password is not None:
@@ -142,10 +145,6 @@ def create_ssh_client(host, port, username, password, private_key, passphrase):
         key_file = create_temp_file(private_key)
         pkey = RSAKey.from_private_key(key_file, password=passphrase)
         key_file.close()
-
-        # TODO: remove this filter, if paramiko 2.5 is released
-        warnings.simplefilter('ignore', cryptography.utils.CryptographyDeprecationWarning)
-
         client.connect(host, username=username, pkey=pkey)
     else:
         raise Exception('At least password or private_key must be present.')
