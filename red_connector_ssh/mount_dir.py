@@ -3,14 +3,16 @@ import tempfile
 import subprocess
 from argparse import ArgumentParser
 
-from red_connector_ssh.helpers import validate, create_password_command, find_executables, DEFAULT_PORT
+import jsonschema
+
+from red_connector_ssh.helpers import create_password_command, find_executables, DEFAULT_PORT
 from red_connector_ssh.schemas import MOUNT_DIR_SCHEMA
 
 
 MOUNT_DIR_DESCRIPTION = 'Mount dir from SSH server.'
 MOUNT_DIR_VALIDATE_DESCRIPTION = 'Validate access data for mount-dir.'
 
-UMOUNT_DIR_DESCRIPTION = 'Unmout directory previously mounted via mount-dir.'
+UMOUNT_DIR_DESCRIPTION = 'Unmount directory previously mounted via mount-dir.'
 
 
 def _mount_dir(access, local_dir_path):
@@ -58,7 +60,7 @@ def _mount_dir_validate(access):
     with open(access) as f:
         access = json.load(f)
     
-    validate(access, MOUNT_DIR_SCHEMA)
+    jsonschema.validate(access, MOUNT_DIR_SCHEMA)
     _ = find_executables()
 
 

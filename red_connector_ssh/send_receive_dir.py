@@ -1,10 +1,11 @@
 import json
 from argparse import ArgumentParser
 
+import jsonschema
 from scp import SCPClient
 
 from red_connector_ssh.schemas import DIR_SCHEMA
-from red_connector_ssh.helpers import create_ssh_client, fetch_directory, validate, DEFAULT_PORT
+from red_connector_ssh.helpers import create_ssh_client, fetch_directory, DEFAULT_PORT
 
 
 RECEIVE_DIR_DESCRIPTION = 'Receive input dir from SSH server.'
@@ -48,7 +49,7 @@ def _receive_dir_validate(access, listing):
         with open(listing) as f:
             listing = json.load(f)
 
-    validate(access, DIR_SCHEMA)
+    jsonschema.validate(access, DIR_SCHEMA)
 
 
 def _send_dir(access, local_dir_path, listing):

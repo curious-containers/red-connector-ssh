@@ -1,5 +1,10 @@
 import os
+import sys
 import tempfile
+import warnings
+from functools import wraps
+
+import cryptography
 import jsonschema
 from shutil import which
 
@@ -14,6 +19,27 @@ SSHFS_EXECUTABLES = ['sshfs']
 
 class ValidationError(Exception):
     pass
+
+
+def graceful_error(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+
+        except jsonschema.exceptions.ValidationError as e:
+            if hasattr(e, 'context'):
+                print('{}:{}Context: {}'.format(repr(e), os.linesep, e.context), file=sys.stderr)
+                exit(1)
+
+            print(repr(e), file=sys.stderr)
+            exit(2)
+
+        except Exception as e:
+            print('{}:{}{}'.format(repr(e), os.linesep, e), file=sys.stderr)
+            exit(3)
+
+    return wrapper
 
 
 def create_password_command(host, port, username, local_dir_path, dir_path, configfile_path, writable):
@@ -120,6 +146,10 @@ def create_ssh_client(host, port, username, password, private_key, passphrase):
         key_file = create_temp_file(private_key)
         pkey = RSAKey.from_private_key(key_file, password=passphrase)
         key_file.close()
+
+        # TODO: remove this filter, if paramiko 2.5 is released
+        warnings.simplefilter('ignore', cryptography.utils.CryptographyDeprecationWarning)
+
         client.connect(host, username=username, pkey=pkey)
     else:
         raise Exception('At least password or private_key must be present.')
@@ -160,13 +190,3 @@ def fetch_directory(listing, scp_client, base_directory, remote_directory, path=
             listing = sub.get('listing')
             if listing:
                 fetch_directory(listing, scp_client, base_directory, remote_directory, sub_path)
-
-
-def validate(instance, schema):
-    try:
-        jsonschema.validate(instance, schema)
-    except jsonschema.ValidationError as e:
-        if hasattr(e, 'context') and e.context is not None:
-            raise ValidationError(str(e.context))
-        else:
-            raise ValidationError(str(e))
