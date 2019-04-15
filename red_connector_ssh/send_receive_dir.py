@@ -5,7 +5,7 @@ import jsonschema
 from scp import SCPClient
 
 from red_connector_ssh.schemas import DIR_SCHEMA
-from red_connector_ssh.helpers import create_ssh_client, fetch_directory, DEFAULT_PORT
+from red_connector_ssh.helpers import create_ssh_client, fetch_directory, DEFAULT_PORT, graceful_error
 
 
 RECEIVE_DIR_DESCRIPTION = 'Receive input dir from SSH server.'
@@ -47,33 +47,34 @@ def _receive_dir_validate(access, listing):
 
     if listing:
         with open(listing) as f:
-            listing = json.load(f)
+            _ = json.load(f)
 
     jsonschema.validate(access, DIR_SCHEMA)
 
 
 def _send_dir(access, local_dir_path, listing):
     with open(access) as f:
-        access = json.load(f)
+        _ = json.load(f)
 
     if listing:
         with open(listing) as f:
-            listing = json.load(f)
+            _ = json.load(f)
 
     raise NotImplementedError('send-dir is not yet implemented')
 
 
 def _send_dir_validate(access, listing):
     with open(access) as f:
-        access = json.load(f)
+        _ = json.load(f)
 
     if listing:
         with open(listing) as f:
-            listing = json.load(f)
+            _ = json.load(f)
 
     raise NotImplementedError('send-dir is not yet implemented')
 
 
+@graceful_error
 def receive_dir():
     parser = ArgumentParser(description=RECEIVE_DIR_DESCRIPTION)
     parser.add_argument(
@@ -92,6 +93,7 @@ def receive_dir():
     _receive_dir(**args.__dict__)
 
 
+@graceful_error
 def receive_dir_validate():
     parser = ArgumentParser(description=RECEIVE_DIR_VALIDATE_DESCRIPTION)
     parser.add_argument(
@@ -106,6 +108,7 @@ def receive_dir_validate():
     _receive_dir_validate(**args.__dict__)
 
 
+@graceful_error
 def send_dir():
     parser = ArgumentParser(description=SEND_DIR_DESCRIPTION)
     parser.add_argument(
@@ -124,6 +127,7 @@ def send_dir():
     _send_dir(**args.__dict__)
 
 
+@graceful_error
 def send_dir_validate():
     parser = ArgumentParser(description=SEND_DIR_VALIDATE_DESCRIPTION)
     parser.add_argument(

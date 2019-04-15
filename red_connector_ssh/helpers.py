@@ -6,6 +6,7 @@ from functools import wraps
 
 import cryptography
 import jsonschema
+from functools import wraps
 from shutil import which
 
 from paramiko import SSHClient, AutoAddPolicy, RSAKey
@@ -17,8 +18,25 @@ FUSERMOUNT_EXECUTABLES = ['fusermount3', 'fusermount']
 SSHFS_EXECUTABLES = ['sshfs']
 
 
-class ValidationError(Exception):
-    pass
+def graceful_error(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+
+        except jsonschema.exceptions.ValidationError as e:
+            if hasattr(e, 'context'):
+                print('{}:{}Context: {}'.format(repr(e), os.linesep, e.context), file=sys.stderr)
+                exit(1)
+
+            print(repr(e), file=sys.stderr)
+            exit(2)
+
+        except Exception as e:
+            print('{}:{}{}'.format(repr(e), os.linesep, e), file=sys.stderr)
+            exit(3)
+
+    return wrapper
 
 
 def graceful_error(func):
