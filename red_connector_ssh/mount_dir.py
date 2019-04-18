@@ -1,4 +1,5 @@
 import json
+import os
 import tempfile
 import subprocess
 from argparse import ArgumentParser
@@ -40,16 +41,19 @@ def _mount_dir(access, local_dir_path):
         )
         command = ' '.join(command)
 
+        os.makedirs(local_dir_path, exist_ok=True)
+
         process_result = subprocess.run(
             command, input=password.encode('utf-8'), stderr=subprocess.PIPE, shell=True
         )
 
         if process_result.returncode != 0:
             raise Exception(
-                'Could not mount directory using host={host}, port={port}, dirPath={dir_path} via sshfs":'
-                '\n{error}'.format(
+                'Could not mount directory using\n\thost={host}\n\tport={port}\n\tlocalDir={local_dir_path}\n\t'
+                'dirPath={dir_path}\nvia sshfs:\n{error}'.format(
                     host=host,
                     port=port,
+                    local_dir_path=local_dir_path,
                     dir_path=dir_path,
                     error=process_result.stderr.decode('utf-8')
                 )
