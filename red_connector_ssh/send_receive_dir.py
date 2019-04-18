@@ -5,8 +5,7 @@ import jsonschema
 from scp import SCPClient
 
 from red_connector_ssh.schemas import DIR_SCHEMA
-from red_connector_ssh.helpers import create_ssh_client, fetch_directory, DEFAULT_PORT, graceful_error
-
+from red_connector_ssh.helpers import create_ssh_client, fetch_directory, DEFAULT_PORT, graceful_error, send_directory
 
 RECEIVE_DIR_DESCRIPTION = 'Receive input dir from SSH server.'
 RECEIVE_DIR_VALIDATE_DESCRIPTION = 'Validate access data for receive-dir.'
@@ -47,20 +46,38 @@ def _receive_dir_validate(access, listing):
 
     if listing:
         with open(listing) as f:
-            _ = json.load(f)
+            listing = json.load(f)
 
     jsonschema.validate(access, DIR_SCHEMA)
 
 
 def _send_dir(access, local_dir_path, listing):
     with open(access) as f:
-        _ = json.load(f)
+        access = json.load(f)
 
     if listing:
         with open(listing) as f:
-            _ = json.load(f)
+            listing = json.load(f)
 
-    raise NotImplementedError('send-dir is not yet implemented')
+    auth = access['auth']
+    dir_path = access['dirPath']
+
+    with create_ssh_client(
+            host=access['host'],
+            port=access.get('port', DEFAULT_PORT),
+            username=auth['username'],
+            password=auth.get('password'),
+            private_key=auth.get('privateKey'),
+            passphrase=auth.get('passphrase')
+    ) as ssh_client:
+        if listing is None:
+            with SCPClient(ssh_client.get_transport()) as scp_client:
+                scp_client.put(local_dir_path, dir_path, recursive=True)
+        else:
+            with ssh_client.open_sftp() as sftp_client:
+                print('listing: {}'.format(listing))
+                sftp_client.mkdir(dir_path)
+                send_directory(listing, sftp_client, local_dir_path, dir_path)
 
 
 def _send_dir_validate(access, listing):
