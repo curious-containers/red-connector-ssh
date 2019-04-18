@@ -41,6 +41,18 @@ DIR_SCHEMA['properties']['dirPath'] = {'type': 'string'}
 DIR_SCHEMA['required'].append('dirPath')
 
 
+_CIPHERS_SCHEMA = {
+    'oneOf': [
+        {
+            'type': 'array',
+            'items': {'type': 'string'}
+        }, {
+            'type': 'string'
+        }
+    ]
+}
+
+
 MOUNT_DIR_SCHEMA = {
     'type': 'object',
     'properties': {
@@ -56,7 +68,8 @@ MOUNT_DIR_SCHEMA = {
             'required': ['username', 'password']
         },
         'dirPath': {'type': 'string'},
-        'writable': {'type': 'boolean'}
+        'writable': {'type': 'boolean'},
+        'ciphers': _CIPHERS_SCHEMA
     },
     'additionalProperties': False,
     'required': ['host', 'auth', 'dirPath']

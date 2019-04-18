@@ -17,6 +17,24 @@ MOUNT_DIR_VALIDATE_DESCRIPTION = 'Validate access data for mount-dir.'
 UMOUNT_DIR_DESCRIPTION = 'Unmount directory previously mounted via mount-dir.'
 
 
+def create_configfile(ciphers):
+    configfile = tempfile.NamedTemporaryFile('w')
+
+    configfile.write('StrictHostKeyChecking=no\n')
+
+    if ciphers:
+        if isinstance(ciphers, list):
+            ciphers_string = ','.join(ciphers)
+        else:
+            ciphers_string = ciphers
+
+        configfile.write('Ciphers={}\n'.format(ciphers_string))
+
+    configfile.flush()
+
+    return configfile
+
+
 def _mount_dir(access, local_dir_path):
     with open(access) as f:
         access = json.load(f)
@@ -27,10 +45,9 @@ def _mount_dir(access, local_dir_path):
     auth = access['auth']
     username = auth['username']
     password = auth['password']
+    ciphers = access.get('ciphers')
 
-    with tempfile.NamedTemporaryFile('w') as temp_configfile:
-        temp_configfile.write('StrictHostKeyChecking=no')
-        temp_configfile.flush()
+    with create_configfile(ciphers) as temp_configfile:
         command = create_password_command(
             host=host,
             port=port,

@@ -42,19 +42,22 @@ def create_password_command(host, port, username, local_dir_path, dir_path, conf
     """
     Creates a command as string list, that can be executed to mount the <dir_path> to <local_dir_path>, using the
     provided information.
-    echo '<password>' | sshfs <username>@<host>:<remote_path> <local_path> -o password_stdin -p <port>
+    sshfs <username>@<host>:<remote_path> <local_path> -o password_stdin -p <port> -F configfile_path
     """
+
     sshfs_executable = find_sshfs_executable()
     remote_connection = '{username}@{host}:{remote_path}'.format(username=username, host=host, remote_path=dir_path)
 
     command = [
-        sshfs_executable, remote_connection, local_dir_path,
+        sshfs_executable,
+        remote_connection,
+        local_dir_path,
         '-o', 'password_stdin',
         '-F', configfile_path,
         '-p', str(port)
     ]
     if not writable:
-        command += ['-o', 'ro']
+        command.extend(('-o', 'ro'))
 
     return command
 
