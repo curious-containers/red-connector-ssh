@@ -6,7 +6,8 @@ from argparse import ArgumentParser
 
 import jsonschema
 
-from red_connector_ssh.helpers import create_password_command, find_executables, DEFAULT_PORT, graceful_error
+from red_connector_ssh.helpers import create_password_command, DEFAULT_PORT, graceful_error, check_executables, \
+    find_fusermount_executable
 from red_connector_ssh.schemas import MOUNT_DIR_SCHEMA
 
 
@@ -65,11 +66,11 @@ def _mount_dir_validate(access):
         access = json.load(f)
     
     jsonschema.validate(access, MOUNT_DIR_SCHEMA)
-    _ = find_executables()
+    check_executables()
 
 
 def _umount_dir(local_dir_path):
-    _, fusermount_executable = find_executables()
+    fusermount_executable = find_fusermount_executable()
 
     process_result = subprocess.run([fusermount_executable, '-u', local_dir_path], stderr=subprocess.PIPE)
     if process_result.returncode != 0:

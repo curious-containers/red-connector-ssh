@@ -44,7 +44,7 @@ def create_password_command(host, port, username, local_dir_path, dir_path, conf
     provided information.
     echo '<password>' | sshfs <username>@<host>:<remote_path> <local_path> -o password_stdin -p <port>
     """
-    sshfs_executable, _ = find_executables()
+    sshfs_executable = find_sshfs_executable()
     remote_connection = '{username}@{host}:{remote_path}'.format(username=username, host=host, remote_path=dir_path)
 
     command = [
@@ -59,28 +59,31 @@ def create_password_command(host, port, username, local_dir_path, dir_path, conf
     return command
 
 
-def find_executables():
-    sshfs_executable = None
-    for executable in SSHFS_EXECUTABLES:
+def find_executable(executables):
+    """
+    Tries every executable in the given executables, and returns the first that exists in PATH
+    :param executables: List of executables
+    :return: A string representing the first executable in executables, that is found in PATH
+    """
+    for executable in executables:
         if which(executable):
-            sshfs_executable = executable
-            break
-    if not sshfs_executable:
-        raise Exception('One of the following executables must be present in PATH: {}'.format(
-            SSHFS_EXECUTABLES
-        ))
+            return executable
+    raise Exception('One of the following executables must be present in PATH: {}'.format(
+        executables
+    ))
 
-    fusermount_executable = None
-    for executable in FUSERMOUNT_EXECUTABLES:
-        if which(executable):
-            fusermount_executable = executable
-            break
-    if not fusermount_executable:
-        raise Exception('One of the following executables must be present in PATH: {}'.format(
-            FUSERMOUNT_EXECUTABLES
-        ))
 
-    return sshfs_executable, fusermount_executable
+def find_sshfs_executable():
+    return find_executable(SSHFS_EXECUTABLES)
+
+
+def find_fusermount_executable():
+    return find_executable(FUSERMOUNT_EXECUTABLES)
+
+
+def check_executables():
+    find_sshfs_executable()
+    find_fusermount_executable()
 
 
 def create_temp_file(content):
