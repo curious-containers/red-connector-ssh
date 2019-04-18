@@ -61,3 +61,33 @@ MOUNT_DIR_SCHEMA = {
     'additionalProperties': False,
     'required': ['host', 'auth', 'dirPath']
 }
+
+_LISTING_SUB_FILE_SCHEMA = {
+    'type': 'object',
+    'properties': {
+        'class': {'enum': ['File']},
+        'basename': {'type': 'string'},
+    },
+    'required': ['class', 'basename'],
+    'additionalProperties': False
+}
+
+_LISTING_SUB_DIRECTORY_SCHEMA = {
+    'type': 'object',
+    'properties': {
+        'class': {'enum': ['Directory']},
+        'basename': {'type': 'string'},
+        'listing': {'$ref': '#/'}
+    },
+    'additionalProperties': False,
+    'required': ['class', 'basename']
+}
+
+# WARNING: Do not embed this schema into another schema,
+# because this breaks the '$ref' in listing_sub_directory_schema
+LISTING_SCHEMA = {
+    'type': 'array',
+    'items': {
+        'oneOf': [_LISTING_SUB_FILE_SCHEMA, _LISTING_SUB_DIRECTORY_SCHEMA]
+    }
+}

@@ -4,7 +4,7 @@ from argparse import ArgumentParser
 import jsonschema
 from scp import SCPClient
 
-from red_connector_ssh.schemas import DIR_SCHEMA
+from red_connector_ssh.schemas import DIR_SCHEMA, LISTING_SCHEMA
 from red_connector_ssh.helpers import create_ssh_client, fetch_directory, DEFAULT_PORT, graceful_error, send_directory
 
 RECEIVE_DIR_DESCRIPTION = 'Receive input dir from SSH server.'
@@ -43,12 +43,12 @@ def _receive_dir(access, local_dir_path, listing):
 def _receive_dir_validate(access, listing):
     with open(access) as f:
         access = json.load(f)
+    jsonschema.validate(access, DIR_SCHEMA)
 
     if listing:
         with open(listing) as f:
             listing = json.load(f)
-
-    jsonschema.validate(access, DIR_SCHEMA)
+        jsonschema.validate(listing, LISTING_SCHEMA)
 
 
 def _send_dir(access, local_dir_path, listing):
@@ -82,13 +82,13 @@ def _send_dir(access, local_dir_path, listing):
 
 def _send_dir_validate(access, listing):
     with open(access) as f:
-        _ = json.load(f)
+        access = json.load(f)
+    jsonschema.validate(access, DIR_SCHEMA)
 
     if listing:
         with open(listing) as f:
-            _ = json.load(f)
-
-    raise NotImplementedError('send-dir is not yet implemented')
+            listing = json.load(f)
+        jsonschema.validate(listing, LISTING_SCHEMA)
 
 
 @graceful_error
