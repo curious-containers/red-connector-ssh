@@ -34,10 +34,10 @@ def _receive_dir(access, local_dir_path, listing):
         passphrase=auth.get('passphrase')
     ) as client:
         with SCPClient(client.get_transport()) as scp_client:
-            if listing is None:
-                scp_client.get(dir_path, local_dir_path, recursive=True)
-            else:
+            if listing:
                 fetch_directory(listing, scp_client, local_dir_path, dir_path)
+            else:
+                scp_client.get(dir_path, local_dir_path, recursive=True)
 
 
 def _receive_dir_validate(access, listing):
@@ -60,7 +60,7 @@ def _send_dir(access, local_dir_path, listing):
             listing = json.load(f)
 
     auth = access['auth']
-    dir_path = access['dirPath']
+    remote_dir_path = access['dirPath']
 
     with create_ssh_client(
             host=access['host'],
@@ -70,14 +70,13 @@ def _send_dir(access, local_dir_path, listing):
             private_key=auth.get('privateKey'),
             passphrase=auth.get('passphrase')
     ) as ssh_client:
-        if listing is None:
-            with SCPClient(ssh_client.get_transport()) as scp_client:
-                scp_client.put(local_dir_path, dir_path, recursive=True)
-        else:
+        if listing:
             with ssh_client.open_sftp() as sftp_client:
-                print('listing: {}'.format(listing))
-                sftp_client.mkdir(dir_path)
-                send_directory(listing, sftp_client, local_dir_path, dir_path)
+                sftp_client.mkdir(remote_dir_path)
+                send_directory(listing, sftp_client, local_dir_path, remote_dir_path)
+        else:
+            with SCPClient(ssh_client.get_transport()) as scp_client:
+                scp_client.put(local_dir_path, remote_dir_path, recursive=True)
 
 
 def _send_dir_validate(access, listing):
