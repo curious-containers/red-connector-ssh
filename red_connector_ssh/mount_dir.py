@@ -1,18 +1,38 @@
 import json
+import os
 import tempfile
 import subprocess
 from argparse import ArgumentParser
 
 import jsonschema
 
-from red_connector_ssh.helpers import create_password_command, find_executables, DEFAULT_PORT, graceful_error
+from red_connector_ssh.helpers import create_password_command, DEFAULT_PORT, graceful_error, check_executables, \
+    find_fusermount_executable
 from red_connector_ssh.schemas import MOUNT_DIR_SCHEMA
 
 
 MOUNT_DIR_DESCRIPTION = 'Mount dir from SSH server.'
 MOUNT_DIR_VALIDATE_DESCRIPTION = 'Validate access data for mount-dir.'
 
-UMOUNT_DIR_DESCRIPTION = 'Unmout directory previously mounted via mount-dir.'
+UMOUNT_DIR_DESCRIPTION = 'Unmount directory previously mounted via mount-dir.'
+
+
+def create_configfile(ciphers):
+    configfile = tempfile.NamedTemporaryFile('w')
+
+    configfile.write('StrictHostKeyChecking=no\n')
+
+    if ciphers:
+        if isinstance(ciphers, list):
+            ciphers_string = ','.join(ciphers)
+        else:
+            ciphers_string = ciphers
+
+        configfile.write('Ciphers={}\n'.format(ciphers_string))
+
+    configfile.flush()
+
+    return configfile
 
 
 def _mount_dir(access, local_dir_path):
@@ -25,10 +45,9 @@ def _mount_dir(access, local_dir_path):
     auth = access['auth']
     username = auth['username']
     password = auth['password']
+    ciphers = access.get('ciphers')
 
-    with tempfile.NamedTemporaryFile('w') as temp_configfile:
-        temp_configfile.write('StrictHostKeyChecking=no')
-        temp_configfile.flush()
+    with create_configfile(ciphers) as temp_configfile:
         command = create_password_command(
             host=host,
             port=port,
@@ -40,16 +59,19 @@ def _mount_dir(access, local_dir_path):
         )
         command = ' '.join(command)
 
+        os.makedirs(local_dir_path, exist_ok=True)
+
         process_result = subprocess.run(
             command, input=password.encode('utf-8'), stderr=subprocess.PIPE, shell=True
         )
 
         if process_result.returncode != 0:
             raise Exception(
-                'Could not mount directory using host={host}, port={port}, dirPath={dir_path} via sshfs":'
-                '\n{error}'.format(
+                'Could not mount directory using\n\thost={host}\n\tport={port}\n\tlocalDir={local_dir_path}\n\t'
+                'dirPath={dir_path}\nvia sshfs:\n{error}'.format(
                     host=host,
                     port=port,
+                    local_dir_path=local_dir_path,
                     dir_path=dir_path,
                     error=process_result.stderr.decode('utf-8')
                 )
@@ -61,11 +83,11 @@ def _mount_dir_validate(access):
         access = json.load(f)
     
     jsonschema.validate(access, MOUNT_DIR_SCHEMA)
-    _ = find_executables()
+    check_executables()
 
 
 def _umount_dir(local_dir_path):
-    _, fusermount_executable = find_executables()
+    fusermount_executable = find_fusermount_executable()
 
     process_result = subprocess.run([fusermount_executable, '-u', local_dir_path], stderr=subprocess.PIPE)
     if process_result.returncode != 0:

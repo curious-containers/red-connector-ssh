@@ -7,7 +7,6 @@ import jsonschema
 from red_connector_ssh.schemas import FILE_SCHEMA
 from red_connector_ssh.helpers import create_ssh_client, ssh_mkdir, DEFAULT_PORT, graceful_error
 
-
 RECEIVE_FILE_DESCRIPTION = 'Receive input file from SSH server.'
 RECEIVE_FILE_VALIDATE_DESCRIPTION = 'Validate access data for receive-file.'
 
