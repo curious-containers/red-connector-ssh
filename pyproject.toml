@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "red-connector-ssh"
-version = "0.6"
+version = "0.7"
 authors = ["Christoph Jansen <Christoph.Jansen@htw-berlin.de>", "Bruno Schilling <Bruno.Schilling@student.htw-berlin.de>"]
 license = "AGPL-3.0"
 readme = "README.md"
