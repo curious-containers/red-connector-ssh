@@ -17,7 +17,7 @@ from red_connector_ssh.mount_dir import mount_dir, mount_dir_validate, umount_di
 from red_connector_ssh.mount_dir import MOUNT_DIR_DESCRIPTION, MOUNT_DIR_VALIDATE_DESCRIPTION, UMOUNT_DIR_DESCRIPTION
 
 
-CLI_VERSION = '0.1'
+CLI_VERSION = '1'
 SCRIPT_NAME = 'red-connector-ssh'
 DESCRIPTION = 'RED Connector SSH'
 TITLE = 'modes'
