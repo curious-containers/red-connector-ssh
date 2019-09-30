@@ -102,6 +102,12 @@ def create_temp_file(content):
 
 
 def ssh_mkdir(sftp, dir_path):
+    cwd = sftp.getcwd()
+    ssh_mkdir_rec(sftp, dir_path)
+    sftp.chdir(cwd)  # reset sftp client working directory
+
+
+def ssh_mkdir_rec(sftp, dir_path):
     # source http://stackoverflow.com/a/14819803
     if dir_path == '/':
         sftp.chdir('/')
