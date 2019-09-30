@@ -1,14 +1,13 @@
 import os
+import socket
 import sys
 import tempfile
-import warnings
 
-import cryptography
 import jsonschema
 from functools import wraps
 from shutil import which
 
-from paramiko import SSHClient, AutoAddPolicy, RSAKey
+from paramiko import SSHClient, AutoAddPolicy, RSAKey, SFTPClient
 from scp import SCPException
 
 DEFAULT_PORT = 22
@@ -32,7 +31,7 @@ def graceful_error(func):
             exit(2)
 
         except Exception as e:
-            print('{}:{}{}'.format(repr(e), os.linesep, e), file=sys.stderr)
+            print('{}:{}'.format(type(e).__name__, e), file=sys.stderr)
             exit(3)
 
     return wrapper
@@ -101,13 +100,42 @@ def create_temp_file(content):
     return tmp_file
 
 
+def cut_remote_user_dir(remote_path):
+    """
+    sftp does not understand '~', so we cut it away since sftp interprets relative paths relative to the sftp working
+    directory, which is initialized as home directory.
+
+    :param remote_path: The path from which to cut the user directory
+    :type remote_path: str
+    :return: The given path without ~ at the beginning
+    :rtype: str
+    """
+    if remote_path.startswith('~/'):
+        return remote_path[2:]
+
+    return remote_path
+
+
 def ssh_mkdir(sftp, dir_path):
+    """
+    Recursively creates the given dir_path at the remote location.
+    It interprets ~ as home directory and relative path as relative to the home directory.
+
+    :param sftp: The SFTPClient to use
+    :type sftp: SFTPClient
+    :param dir_path: The path to create at the remote location.
+    :type dir_path: str
+    """
+    dir_path = cut_remote_user_dir(dir_path)
+
     cwd = sftp.getcwd()
-    ssh_mkdir_rec(sftp, dir_path)
-    sftp.chdir(cwd)  # reset sftp client working directory
+    _ssh_mkdir_recursive(sftp, dir_path)
+
+    # reset sftp client working directory
+    sftp.chdir(cwd)
 
 
-def ssh_mkdir_rec(sftp, dir_path):
+def _ssh_mkdir_recursive(sftp, dir_path):
     # source http://stackoverflow.com/a/14819803
     if dir_path == '/':
         sftp.chdir('/')
@@ -117,8 +145,8 @@ def ssh_mkdir_rec(sftp, dir_path):
     try:
         sftp.chdir(dir_path)
     except IOError:
-        dirname, basename = os.path.split(dir_path.rstrip('/'))
-        ssh_mkdir(sftp, dirname)
+        dirname, basename = os.path.split(os.path.normpath(dir_path))
+        _ssh_mkdir_recursive(sftp, dirname)
         sftp.mkdir(basename)
         sftp.chdir(basename)
 
@@ -140,26 +168,33 @@ def create_ssh_client(host, port, username, password, private_key, passphrase):
     :raise SSHException: If the given private_key, username or password is invalid
     :raise socket.gaierror: If the given host is not known
     :return: A connected paramiko.SSHClient
-    """
-    # TODO: remove this filter, if paramiko 2.5 is released
-    warnings.simplefilter('ignore', cryptography.utils.CryptographyDeprecationWarning)
 
+    :raise ConnectionError: If the connection to the remote host failed or if neither password nor pkey are specified
+    :raise paramiko.ssh_exception.AuthenticationException: If the authentication to the remote host failed
+    """
     client = SSHClient()
     client.set_missing_host_key_policy(AutoAddPolicy())
     if password is not None:
-        client.connect(
-            host,
-            port=port,
-            username=username,
-            password=password
-        )
+        try:
+            client.connect(
+                host,
+                port=port,
+                username=username,
+                password=password
+            )
+        except socket.gaierror:
+            raise ConnectionError('Could not connect to remote host "{}"'.format(host))
     elif private_key is not None:
         key_file = create_temp_file(private_key)
         pkey = RSAKey.from_private_key(key_file, password=passphrase)
         key_file.close()
-        client.connect(host, username=username, pkey=pkey)
+        try:
+            client.connect(host, username=username, pkey=pkey)
+        except socket.gaierror:
+            raise ConnectionError('Could not connect to remote host "{}"'.format(host))
     else:
-        raise Exception('At least password or private_key must be present.')
+        raise ConnectionError('At least password or private_key must be present.')
+
     return client
 
 
@@ -171,7 +206,7 @@ def fetch_directory(listing, scp_client, base_directory, remote_directory, path=
     :param listing: A complete listing with complete urls for every containing file.
     :param scp_client: A SCPClient, that has to be connected to a host.
     :param base_directory: The path to the base directory, where to create the fetched files and directories.
-                      This base directory should already be present on the local filesystem.
+                           This base directory should already be present on the local filesystem.
     :param remote_directory: The path to the remote base directory from where to fetch the subfiles and directories.
     :param path: A path specifying which subdirectory of remove_directory should be fetched and where to place it
                  under base_directory. The files are fetched from os.path.join(remote_directory, path) and placed
@@ -179,7 +214,6 @@ def fetch_directory(listing, scp_client, base_directory, remote_directory, path=
 
     :raise Exception: If the listing specifies a file or directory which is not present on the remote host
     """
-
     for sub in listing:
         sub_path = os.path.normpath(os.path.join(path, sub['basename']))
         remote_path = os.path.normpath(os.path.join(remote_directory, sub_path))
@@ -189,8 +223,9 @@ def fetch_directory(listing, scp_client, base_directory, remote_directory, path=
             try:
                 scp_client.get(remote_path=remote_path, local_path=local_path)
             except SCPException as e:
-                raise Exception('The remote file under "{}" could not be transferred.\n{}'.
-                                format(remote_path, str(e)))
+                raise SCPException(
+                    'The remote file under "{}" could not be transferred.\n{}'.format(remote_path, str(e))
+                )
 
         elif sub['class'] == 'Directory':
             os.mkdir(local_path)
@@ -207,8 +242,8 @@ def send_directory(listing, sftp_client, base_directory, remote_directory, path=
     :param listing: A listing specifying the directories and files to send to the remote host.
     :param sftp_client: A paramiko SFTPClient, that has to be connected to a host.
     :param base_directory: The path to the directory, where the files to send are stored.
-    This base directory should already be present on the local filesystem and contain all files and directories given in
-    listing.
+                           This base directory should already be present on the local filesystem and contain all files
+                           and directories given in listing.
     :param remote_directory: The path to the remote base directory where to put the subfiles and directories.
     :param path: A path specifying which subdirectory of remove_directory should be fetched and where to place it
                  under base_directory. The files are fetched from os.path.join(remote_directory, path) and placed
@@ -225,11 +260,17 @@ def send_directory(listing, sftp_client, base_directory, remote_directory, path=
             try:
                 sftp_client.put(local_path, remote_path)
             except SCPException as e:
-                raise Exception('The local file "{}" could not be transferred to "{}".\n{}'.
-                                format(local_path, remote_path, str(e)))
+                raise SCPException(
+                    'The local file "{}" could not be transferred to "{}".\n{}'.format(local_path, remote_path, str(e))
+                )
 
         elif sub['class'] == 'Directory':
-            sftp_client.mkdir(remote_path)
+            sys.stdout.flush()
+            try:
+                sftp_client.mkdir(remote_path)
+            except OSError:
+                # this happens, if this directory already exists
+                pass
             listing = sub.get('listing')
             if listing:
                 send_directory(listing, sftp_client, base_directory, remote_directory, sub_path)

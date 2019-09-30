@@ -10,7 +10,7 @@ description = "RED Connector SSH is part of the Curious Containers project."
 
 [tool.poetry.dependencies]
 python = "^3.4"
-paramiko = "^2.4"
+paramiko = "^2.5"
 scp = "^0.13.0"
 jsonschema = "^3.0"
 

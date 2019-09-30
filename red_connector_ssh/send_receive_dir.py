@@ -1,11 +1,13 @@
 import json
+import os
 from argparse import ArgumentParser
 
 import jsonschema
-from scp import SCPClient
+from scp import SCPClient, SCPException
 
 from red_connector_ssh.schemas import DIR_SCHEMA, LISTING_SCHEMA
-from red_connector_ssh.helpers import create_ssh_client, fetch_directory, DEFAULT_PORT, graceful_error, send_directory
+from red_connector_ssh.helpers import create_ssh_client, fetch_directory, DEFAULT_PORT, graceful_error, \
+    send_directory, ssh_mkdir, cut_remote_user_dir
 
 RECEIVE_DIR_DESCRIPTION = 'Receive input dir from SSH server.'
 RECEIVE_DIR_VALIDATE_DESCRIPTION = 'Validate access data for receive-dir.'
@@ -14,7 +16,7 @@ SEND_DIR_DESCRIPTION = 'Send output dir to SSH server.'
 SEND_DIR_VALIDATE_DESCRIPTION = 'Validate access data for send-dir.'
 
 
-def _receive_dir(access, local_dir_path, listing):
+def _load_access_listing_auth(access, listing):
     with open(access) as f:
         access = json.load(f)
 
@@ -22,8 +24,19 @@ def _receive_dir(access, local_dir_path, listing):
         with open(listing) as f:
             listing = json.load(f)
 
+    return access, listing
+
+
+def _receive_dir(access, local_dir_path, listing):
+    local_dir_path = os.path.normpath(local_dir_path)
+    access, listing = _load_access_listing_auth(access, listing)
     auth = access['auth']
-    dir_path = access['dirPath']
+    remote_dir_path = os.path.normpath(cut_remote_user_dir(access['dirPath']))
+
+    if not os.path.isdir(os.path.dirname(local_dir_path)):
+        raise FileNotFoundError(
+            'Could not create local directory "{}", because parent directory does not exist'.format(local_dir_path)
+        )
 
     with create_ssh_client(
         host=access['host'],
@@ -35,9 +48,21 @@ def _receive_dir(access, local_dir_path, listing):
     ) as client:
         with SCPClient(client.get_transport()) as scp_client:
             if listing:
-                fetch_directory(listing, scp_client, local_dir_path, dir_path)
+                try:
+                    os.mkdir(local_dir_path)
+                except FileExistsError:
+                    pass
+                fetch_directory(listing, scp_client, local_dir_path, remote_dir_path)
             else:
-                scp_client.get(dir_path, local_dir_path, recursive=True)
+                try:
+                    scp_client.get(remote_dir_path, local_dir_path, recursive=True)
+                except SCPException:
+                    raise FileNotFoundError('Could not find remote directory "{}"'.format(remote_dir_path))
+                except FileNotFoundError:
+                    raise NotADirectoryError(
+                        'Could not create local directory "{}", because parent directory does not exist'
+                        .format(local_dir_path)
+                    )
 
 
 def _receive_dir_validate(access, listing):
@@ -52,15 +77,9 @@ def _receive_dir_validate(access, listing):
 
 
 def _send_dir(access, local_dir_path, listing):
-    with open(access) as f:
-        access = json.load(f)
-
-    if listing:
-        with open(listing) as f:
-            listing = json.load(f)
-
+    access, listing = _load_access_listing_auth(access, listing)
     auth = access['auth']
-    remote_dir_path = access['dirPath']
+    remote_dir_path = os.path.normpath(cut_remote_user_dir(access['dirPath']))
 
     with create_ssh_client(
             host=access['host'],
@@ -72,9 +91,12 @@ def _send_dir(access, local_dir_path, listing):
     ) as ssh_client:
         if listing:
             with ssh_client.open_sftp() as sftp_client:
-                sftp_client.mkdir(remote_dir_path)
+                ssh_mkdir(sftp_client, remote_dir_path)
                 send_directory(listing, sftp_client, local_dir_path, remote_dir_path)
         else:
+            with ssh_client.open_sftp() as sftp_client:
+                remote_parent_dir = os.path.dirname(remote_dir_path)
+                ssh_mkdir(sftp_client, remote_parent_dir)
             with SCPClient(ssh_client.get_transport()) as scp_client:
                 scp_client.put(local_dir_path, remote_dir_path, recursive=True)
 
@@ -90,7 +112,7 @@ def _send_dir_validate(access, listing):
         jsonschema.validate(listing, LISTING_SCHEMA)
 
 
-@graceful_error
+# @graceful_error
 def receive_dir():
     parser = ArgumentParser(description=RECEIVE_DIR_DESCRIPTION)
     parser.add_argument(
@@ -124,7 +146,7 @@ def receive_dir_validate():
     _receive_dir_validate(**args.__dict__)
 
 
-@graceful_error
+# @graceful_error
 def send_dir():
     parser = ArgumentParser(description=SEND_DIR_DESCRIPTION)
     parser.add_argument(
