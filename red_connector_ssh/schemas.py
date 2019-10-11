@@ -1,30 +1,32 @@
 from copy import deepcopy
 
+_AUTH_SCHEMA = {
+    'oneOf': [{
+        'type': 'object',
+        'properties': {
+            'username': {'type': 'string'},
+            'password': {'type': 'string'},
+        },
+        'additionalProperties': False,
+        'required': ['username', 'password']
+    }, {
+        'type': 'object',
+        'properties': {
+            'username': {'type': 'string'},
+            'privateKey': {'type': 'string'},
+            'passphrase': {'type': 'string'},
+        },
+        'additionalProperties': False,
+        'required': ['username', 'privateKey']
+    }]
+}
+
 _BASE_SCHEMA = {
     'type': 'object',
     'properties': {
         'host': {'type': 'string'},
         'port': {'type': 'integer'},
-        'auth': {
-            'oneOf': [{
-                'type': 'object',
-                'properties': {
-                    'username': {'type': 'string'},
-                    'password': {'type': 'string'},
-                },
-                'additionalProperties': False,
-                'required': ['username', 'password']
-            }, {
-                'type': 'object',
-                'properties': {
-                    'username': {'type': 'string'},
-                    'privateKey': {'type': 'string'},
-                    'passphrase': {'type': 'string'},
-                },
-                'additionalProperties': False,
-                'required': ['username', 'privateKey']
-            }]
-        },
+        'auth': _AUTH_SCHEMA,
     },
     'additionalProperties': False,
     'required': ['host', 'auth']
@@ -58,15 +60,7 @@ MOUNT_DIR_SCHEMA = {
     'properties': {
         'host': {'type': 'string'},
         'port': {'type': 'integer'},
-        'auth': {
-            'type': 'object',
-            'properties': {
-                'username': {'type': 'string'},
-                'password': {'type': 'string'},
-            },
-            'additionalProperties': False,
-            'required': ['username', 'password']
-        },
+        'auth': _AUTH_SCHEMA,
         'dirPath': {'type': 'string'},
         'writable': {'type': 'boolean'},
         'ciphers': _CIPHERS_SCHEMA

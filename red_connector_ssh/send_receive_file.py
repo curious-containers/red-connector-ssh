@@ -5,7 +5,8 @@ from argparse import ArgumentParser
 import jsonschema
 
 from red_connector_ssh.schemas import FILE_SCHEMA
-from red_connector_ssh.helpers import create_ssh_client, ssh_mkdir, DEFAULT_PORT, graceful_error, cut_remote_user_dir
+from red_connector_ssh.helpers import create_ssh_client, ssh_mkdir, DEFAULT_PORT, graceful_error, cut_remote_user_dir, \
+    InvalidAuthenticationError
 
 RECEIVE_FILE_DESCRIPTION = 'Receive input file from SSH server.'
 RECEIVE_FILE_VALIDATE_DESCRIPTION = 'Validate access data for receive-file.'
@@ -48,6 +49,25 @@ def _receive_file_validate(access):
 
     jsonschema.validate(access, FILE_SCHEMA)
 
+    auth = access['auth']
+
+    remote_file_path = cut_remote_user_dir(access['filePath'])
+
+    with create_ssh_client(
+            host=access['host'],
+            port=access.get('port', DEFAULT_PORT),
+            username=auth['username'],
+            password=auth.get('password'),
+            private_key=auth.get('privateKey'),
+            passphrase=auth.get('passphrase')
+    ) as client:
+        with client.open_sftp() as sftp:
+            try:
+                with sftp.open(remote_file_path, mode='r', bufsize=0):
+                    pass
+            except FileNotFoundError:
+                raise FileNotFoundError('Could not find remote file "{}"'.format(remote_file_path))
+
 
 def _send_file(access, local_file_path):
     with open(access) as f:
@@ -79,6 +99,18 @@ def _send_file_validate(access):
         access = json.load(f)
 
     jsonschema.validate(access, FILE_SCHEMA)
+
+    # check whether authentication works
+    auth = access['auth']
+    with create_ssh_client(
+            host=access['host'],
+            port=access.get('port', DEFAULT_PORT),
+            username=auth['username'],
+            password=auth.get('password'),
+            private_key=auth.get('privateKey'),
+            passphrase=auth.get('passphrase')
+    ):
+        pass
 
 
 @graceful_error

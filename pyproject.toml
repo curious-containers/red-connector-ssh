@@ -13,6 +13,7 @@ python = "^3.4"
 paramiko = "^2.5"
 scp = "^0.13.0"
 jsonschema = "^3.0"
+pexpect = "^4.7.0"
 
 [tool.poetry.dev-dependencies]
 

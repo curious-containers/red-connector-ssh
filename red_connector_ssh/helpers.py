@@ -7,13 +7,10 @@ import jsonschema
 from functools import wraps
 from shutil import which
 
-from paramiko import SSHClient, AutoAddPolicy, RSAKey, SFTPClient
+from paramiko import SSHClient, AutoAddPolicy, RSAKey, SFTPClient, AuthenticationException, SSHException
 from scp import SCPException
 
 DEFAULT_PORT = 22
-
-FUSERMOUNT_EXECUTABLES = ['fusermount3', 'fusermount']
-SSHFS_EXECUTABLES = ['sshfs']
 
 
 def graceful_error(func):
@@ -31,34 +28,10 @@ def graceful_error(func):
             exit(2)
 
         except Exception as e:
-            print('{}:{}'.format(type(e).__name__, e), file=sys.stderr)
+            print('{}: {}'.format(type(e).__name__, e), file=sys.stderr)
             exit(3)
 
     return wrapper
-
-
-def create_password_command(host, port, username, local_dir_path, dir_path, configfile_path, writable):
-    """
-    Creates a command as string list, that can be executed to mount the <dir_path> to <local_dir_path>, using the
-    provided information.
-    sshfs <username>@<host>:<remote_path> <local_path> -o password_stdin -p <port> -F configfile_path
-    """
-
-    sshfs_executable = find_sshfs_executable()
-    remote_connection = '{username}@{host}:{remote_path}'.format(username=username, host=host, remote_path=dir_path)
-
-    command = [
-        sshfs_executable,
-        remote_connection,
-        local_dir_path,
-        '-o', 'password_stdin',
-        '-F', configfile_path,
-        '-p', str(port)
-    ]
-    if not writable:
-        command.extend(('-o', 'ro'))
-
-    return command
 
 
 def find_executable(executables):
@@ -73,19 +46,6 @@ def find_executable(executables):
     raise Exception('One of the following executables must be present in PATH: {}'.format(
         executables
     ))
-
-
-def find_sshfs_executable():
-    return find_executable(SSHFS_EXECUTABLES)
-
-
-def find_fusermount_executable():
-    return find_executable(FUSERMOUNT_EXECUTABLES)
-
-
-def check_executables():
-    find_sshfs_executable()
-    find_fusermount_executable()
 
 
 def create_temp_file(content):
@@ -118,7 +78,7 @@ def cut_remote_user_dir(remote_path):
 
 def ssh_mkdir(sftp, dir_path):
     """
-    Recursively creates the given dir_path at the remote location.
+    Recursively creates the given remote_path at the remote location.
     It interprets ~ as home directory and relative path as relative to the home directory.
 
     :param sftp: The SFTPClient to use
@@ -164,13 +124,11 @@ def create_ssh_client(host, port, username, password, private_key, passphrase):
     :param password: The password to authenticate
     :param private_key: A valid private RSA key as string
     :param passphrase: A passphrase to decrypt the private key, if the private key is encrypted
-    :raise Exception: If neither password nor private_key is given
-    :raise SSHException: If the given private_key, username or password is invalid
-    :raise socket.gaierror: If the given host is not known
+
     :return: A connected paramiko.SSHClient
 
     :raise ConnectionError: If the connection to the remote host failed or if neither password nor pkey are specified
-    :raise paramiko.ssh_exception.AuthenticationException: If the authentication to the remote host failed
+    :raise InvalidAuthenticationError: If the authentication to the remote host failed
     """
     client = SSHClient()
     client.set_missing_host_key_policy(AutoAddPolicy())
@@ -184,10 +142,17 @@ def create_ssh_client(host, port, username, password, private_key, passphrase):
             )
         except socket.gaierror:
             raise ConnectionError('Could not connect to remote host "{}"'.format(host))
+        except AuthenticationException:
+            raise InvalidAuthenticationError(
+                'Could not connect to remote host "{}". Invalid username/password.'.format(host)
+            )
     elif private_key is not None:
-        key_file = create_temp_file(private_key)
-        pkey = RSAKey.from_private_key(key_file, password=passphrase)
-        key_file.close()
+        with create_temp_file(private_key) as key_file:
+            try:
+                pkey = RSAKey.from_private_key(key_file, password=passphrase)
+            except SSHException:
+                raise InvalidAuthenticationError('Could not connect to remote host "{}". Invalid key.'.format(host))
+
         try:
             client.connect(host, username=username, pkey=pkey)
         except socket.gaierror:
@@ -274,3 +239,35 @@ def send_directory(listing, sftp_client, base_directory, remote_directory, path=
             listing = sub.get('listing')
             if listing:
                 send_directory(listing, sftp_client, base_directory, remote_directory, sub_path)
+
+
+def check_remote_dir_available(access):
+    """
+    Tries to create an SSHClient with the given access information and checks if the specified directory is available
+
+    :param access: The access information to use
+
+    :raise FileNotFoundError: If the remote directory is not available
+    :raise ConnectionError: If the connection to the remote host failed or if neither password nor pkey are specified
+    :raise InvalidAuthenticationError: If the authentication to the remote host failed
+    """
+    auth = access['auth']
+    remote_dir_path = cut_remote_user_dir(access['dirPath'])
+
+    with create_ssh_client(
+            host=access['host'],
+            port=access.get('port', DEFAULT_PORT),
+            username=auth['username'],
+            password=auth.get('password'),
+            private_key=auth.get('privateKey'),
+            passphrase=auth.get('passphrase')
+    ) as client:
+        with client.open_sftp() as sftp:
+            try:
+                sftp.listdir(remote_dir_path)
+            except FileNotFoundError:
+                raise FileNotFoundError('Could not find remote directory "{}"'.format(remote_dir_path))
+
+
+class InvalidAuthenticationError(Exception):
+    pass

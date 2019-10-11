@@ -7,7 +7,7 @@ from scp import SCPClient, SCPException
 
 from red_connector_ssh.schemas import DIR_SCHEMA, LISTING_SCHEMA
 from red_connector_ssh.helpers import create_ssh_client, fetch_directory, DEFAULT_PORT, graceful_error, \
-    send_directory, ssh_mkdir, cut_remote_user_dir
+    send_directory, ssh_mkdir, cut_remote_user_dir, check_remote_dir_available
 
 RECEIVE_DIR_DESCRIPTION = 'Receive input dir from SSH server.'
 RECEIVE_DIR_VALIDATE_DESCRIPTION = 'Validate access data for receive-dir.'
@@ -16,7 +16,7 @@ SEND_DIR_DESCRIPTION = 'Send output dir to SSH server.'
 SEND_DIR_VALIDATE_DESCRIPTION = 'Validate access data for send-dir.'
 
 
-def _load_access_listing_auth(access, listing):
+def _load_access_listing(access, listing):
     with open(access) as f:
         access = json.load(f)
 
@@ -29,7 +29,7 @@ def _load_access_listing_auth(access, listing):
 
 def _receive_dir(access, local_dir_path, listing):
     local_dir_path = os.path.normpath(local_dir_path)
-    access, listing = _load_access_listing_auth(access, listing)
+    access, listing = _load_access_listing(access, listing)
     auth = access['auth']
     remote_dir_path = os.path.normpath(cut_remote_user_dir(access['dirPath']))
 
@@ -66,18 +66,17 @@ def _receive_dir(access, local_dir_path, listing):
 
 
 def _receive_dir_validate(access, listing):
-    with open(access) as f:
-        access = json.load(f)
-    jsonschema.validate(access, DIR_SCHEMA)
+    access, listing = _load_access_listing(access, listing)
 
+    jsonschema.validate(access, DIR_SCHEMA)
     if listing:
-        with open(listing) as f:
-            listing = json.load(f)
         jsonschema.validate(listing, LISTING_SCHEMA)
+
+    check_remote_dir_available(access)
 
 
 def _send_dir(access, local_dir_path, listing):
-    access, listing = _load_access_listing_auth(access, listing)
+    access, listing = _load_access_listing(access, listing)
     auth = access['auth']
     remote_dir_path = os.path.normpath(cut_remote_user_dir(access['dirPath']))
 
@@ -102,17 +101,26 @@ def _send_dir(access, local_dir_path, listing):
 
 
 def _send_dir_validate(access, listing):
-    with open(access) as f:
-        access = json.load(f)
-    jsonschema.validate(access, DIR_SCHEMA)
+    access, listing = _load_access_listing(access, listing)
 
+    jsonschema.validate(access, DIR_SCHEMA)
     if listing:
-        with open(listing) as f:
-            listing = json.load(f)
         jsonschema.validate(listing, LISTING_SCHEMA)
 
+    # check whether authentication works
+    auth = access['auth']
+    with create_ssh_client(
+            host=access['host'],
+            port=access.get('port', DEFAULT_PORT),
+            username=auth['username'],
+            password=auth.get('password'),
+            private_key=auth.get('privateKey'),
+            passphrase=auth.get('passphrase')
+    ):
+        pass
 
-# @graceful_error
+
+@graceful_error
 def receive_dir():
     parser = ArgumentParser(description=RECEIVE_DIR_DESCRIPTION)
     parser.add_argument(
@@ -146,7 +154,7 @@ def receive_dir_validate():
     _receive_dir_validate(**args.__dict__)
 
 
-# @graceful_error
+@graceful_error
 def send_dir():
     parser = ArgumentParser(description=SEND_DIR_DESCRIPTION)
     parser.add_argument(
