@@ -189,6 +189,7 @@ def _mount_with_key_and_passphrase(command, passphrase):
                 '.*Connection reset by peer.*',
                 '.*Enter passphrase for key \'.*\':',  # sshfs asks for passphrase again, if the given passphrase was
                                                        # wrong
+                '\r\n',
                 pexpect.TIMEOUT],
             timeout=0.5
         )
@@ -244,8 +245,6 @@ def _mount_dir(access, local_dir_path):
             enable_password_stdin=enable_password,
             identity_file=identity_file.name if identity_file else None
         )
-
-        # print(command)
 
         if private_key:
             if passphrase:
