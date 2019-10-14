@@ -162,6 +162,50 @@ def create_sshfs_command(
     return command
 
 
+def _mount_with_key_and_passphrase(command, passphrase):
+    """
+    Mounts a directory using the given command and enters a passphrase, if necessary.
+    See https://github.com/pexpect/pexpect/issues/192 for information, why a bash shell is started.
+
+    :param command: The sshfs command that mounts the remote directory
+    :param passphrase: The passphrase to enter, after command execution
+
+    :raise InvalidAuthorizationError: If the authorization failed
+    """
+    bash = pexpect.spawn('bash', echo=False)
+
+    bash.sendline('echo READY')
+    bash.expect_exact('READY')
+
+    bash.sendline(' '.join(command))
+
+    bash.expect(
+        ['.*Enter passphrase for key \'.*\':', '.*Connection reset by peer.*', pexpect.TIMEOUT],
+        timeout=MOUNT_TIMEOUT
+    )
+    if bash.match_index == 0:
+        bash.sendline(passphrase)
+        bash.expect([
+                '.*Connection reset by peer.*',
+                '.*Enter passphrase for key \'.*\':',  # sshfs asks for passphrase again, if the given passphrase was
+                                                       # wrong
+                pexpect.TIMEOUT],
+            timeout=0.5
+        )
+        if bash.match_index == 0:
+            raise InvalidAuthenticationError('Permission denied.')
+        elif bash.match_index == 1:
+            raise InvalidAuthenticationError('Invalid passphrase')
+    else:
+        raise InvalidAuthenticationError('Permission denied.')
+
+    bash.sendline('echo FINISHED')
+    bash.expect(['FINISHED', pexpect.TIMEOUT], timeout=1)
+
+    bash.sendline('exit')
+    bash.expect_exact(pexpect.EOF)
+
+
 def _mount_dir(access, local_dir_path):
     with open(access) as f:
         access = json.load(f)
@@ -185,7 +229,6 @@ def _mount_dir(access, local_dir_path):
         identity_file = create_identity_file(private_key)
     elif password:
         enable_password = True
-        del passphrase  # ignore passphrase if password is given
     else:
         raise InvalidAuthenticationError('At least password or private_key must be present.')
 
@@ -198,59 +241,63 @@ def _mount_dir(access, local_dir_path):
             remote_path=dir_path,
             configfile_path=temp_configfile.name,
             writable=access.get('writable', False),
-            # enable_password_stdin=enable_password,
+            enable_password_stdin=enable_password,
             identity_file=identity_file.name if identity_file else None
         )
 
-        # see https://github.com/pexpect/pexpect/issues/192 for information, why a bash shell is started
-        bash = pexpect.spawn('bash', echo=False)
-
-        bash.sendline('echo READY')
-        bash.expect_exact('READY')
-
-        bash.sendline(' '.join(command))
+        # print(command)
 
         if private_key:
-            bash.expect(
-                ['.*Enter passphrase for key \'.*\':', '.*Connection reset by peer*', pexpect.TIMEOUT],
-                timeout=MOUNT_TIMEOUT
-            )
-            if bash.match_index == 0:
-                bash.sendline(passphrase)
+            if passphrase:
+                try:
+                    _mount_with_key_and_passphrase(command, passphrase)
+                except InvalidAuthenticationError as e:
+                    raise InvalidAuthenticationError(
+                        'Could not mount directory using\n\thost={host}\n\tport={port}\n\tlocalDir={local_dir_path}\n\t'
+                        'dirPath={dir_path}\n\tauthentication=key + passphrase\nvia sshfs:\n{error}.'.format(
+                            host=host,
+                            port=port,
+                            local_dir_path=local_dir_path,
+                            dir_path=dir_path,
+                            error=str(e)
+                        )
+                    )
+                finally:
+                    identity_file.close()
             else:
+                process_result = subprocess.run(
+                    command, stderr=subprocess.PIPE
+                )
+
                 identity_file.close()
-                raise InvalidAuthenticationError(
-                    'Could not mount directory using\n\thost={host}\n\tport={port}\n\tlocalDir={local_dir_path}\n\t'
-                    'dirPath={dir_path}\n\tauthentication=key\nvia sshfs:\nPermission denied.'.format(
-                        host=host,
-                        port=port,
-                        local_dir_path=local_dir_path,
-                        dir_path=dir_path,
+
+                if process_result.returncode != 0:
+                    raise InvalidAuthenticationError(
+                        'Could not mount directory using\n\thost={host}\n\tport={port}\n\tlocalDir={local_dir_path}\n\t'
+                        'dirPath={dir_path}\n\tauthentication=key no passphrase\nvia sshfs:\n{error}'.format(
+                            host=host,
+                            port=port,
+                            local_dir_path=local_dir_path,
+                            dir_path=dir_path,
+                            error=process_result.stderr.decode('utf-8')
+                        )
                     )
-                )
         elif password:
-            bash.expect(['.*password:', pexpect.TIMEOUT], timeout=MOUNT_TIMEOUT)
-            if bash.match_index == 0:
-                bash.sendline(password)
-            else:
+            process_result = subprocess.run(
+                command, input=password.encode('utf-8'), stderr=subprocess.PIPE
+            )
+
+            if process_result.returncode != 0:
                 raise InvalidAuthenticationError(
                     'Could not mount directory using\n\thost={host}\n\tport={port}\n\tlocalDir={local_dir_path}\n\t'
-                    'dirPath={dir_path}\n\tauthentication=password\nvia sshfs:\nPermission denied.'.format(
+                    'dirPath={dir_path}\n\tauthentication=password\nvia sshfs:\n{error}'.format(
                         host=host,
                         port=port,
                         local_dir_path=local_dir_path,
                         dir_path=dir_path,
+                        error=process_result.stderr.decode('utf-8')
                     )
                 )
-
-        bash.sendline('echo FINISHED')
-        bash.expect('.*FINISHED')
-
-        bash.sendline('exit')
-        bash.expect_exact(pexpect.EOF)
-
-        if identity_file:
-            identity_file.close()
 
 
 def _mount_dir_validate(access):

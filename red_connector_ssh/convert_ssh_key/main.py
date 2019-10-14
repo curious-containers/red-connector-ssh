@@ -71,7 +71,7 @@ def main():
             print('The given private key file "{}" is not valid.'.format(key_file_path))
             return 3
         except paramiko.ssh_exception.SSHException as e:
-            print(str(e))
+            print('{}: {}'.format(type(e).__name__, str(e)))
             return 4
 
     # read key_file
