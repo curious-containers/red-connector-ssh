@@ -228,6 +228,10 @@ def send_directory(listing, sftp_client, base_directory, remote_directory, path=
                 raise SCPException(
                     'The local file "{}" could not be transferred to "{}".\n{}'.format(local_path, remote_path, str(e))
                 )
+            except FileNotFoundError:
+                raise FileNotFoundError(
+                    'Sending local file "{}" failed, because the file could not be found.'.format(local_path)
+                )
 
         elif sub['class'] == 'Directory':
             sys.stdout.flush()
