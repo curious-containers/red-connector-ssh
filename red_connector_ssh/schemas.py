@@ -74,6 +74,8 @@ _LISTING_SUB_FILE_SCHEMA = {
     'properties': {
         'class': {'enum': ['File']},
         'basename': {'type': 'string'},
+        'size': {'type': 'number'},
+        'checksum': {'type': 'string'}
     },
     'required': ['class', 'basename'],
     'additionalProperties': False
