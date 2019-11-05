@@ -9,7 +9,7 @@ import jsonschema
 import pexpect
 
 from red_connector_ssh.helpers import DEFAULT_PORT, graceful_error, check_remote_dir_available, \
-    InvalidAuthenticationError, find_executable
+    InvalidAuthenticationError, find_executable, create_ssh_client, ssh_mkdir
 from red_connector_ssh.schemas import MOUNT_DIR_SCHEMA
 
 
@@ -233,6 +233,20 @@ def _mount_dir(access, local_dir_path):
     else:
         raise InvalidAuthenticationError('At least password or private_key must be present.')
 
+    try:
+        check_remote_dir_available(access)
+    except FileNotFoundError:
+        with create_ssh_client(
+                host=access['host'],
+                port=access.get('port', DEFAULT_PORT),
+                username=auth['username'],
+                password=auth.get('password'),
+                private_key=auth.get('privateKey'),
+                passphrase=auth.get('passphrase')
+        ) as ssh_client:
+            with ssh_client.open_sftp() as sftp_client:
+                ssh_mkdir(sftp_client, dir_path)
+
     with create_configfile(ciphers, enable_password=enable_password) as temp_configfile:
         command = create_sshfs_command(
             host=host,
@@ -305,8 +319,6 @@ def _mount_dir_validate(access):
     
     jsonschema.validate(access, MOUNT_DIR_SCHEMA)
     check_executables()
-
-    check_remote_dir_available(access)
 
 
 def _umount_dir(local_dir_path):
