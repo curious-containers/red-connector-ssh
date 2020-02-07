@@ -11,6 +11,9 @@ from paramiko import SSHClient, AutoAddPolicy, RSAKey, SFTPClient, Authenticatio
 from scp import SCPException
 
 DEFAULT_PORT = 22
+DEFAULT_BANNER_TIMEOUT = 60
+DEFAULT_TIMEOUT = 120
+DEFAULT_AUTH_TIMEOUT = 60
 
 
 def graceful_error(func):
@@ -111,7 +114,8 @@ def _ssh_mkdir_recursive(sftp, dir_path):
         sftp.chdir(basename)
 
 
-def create_ssh_client(host, port, username, password, private_key, passphrase):
+def create_ssh_client(host, port, username, password, private_key, passphrase, timeout=DEFAULT_TIMEOUT,
+                      auth_timeout=DEFAULT_AUTH_TIMEOUT, banner_timeout=DEFAULT_BANNER_TIMEOUT):
     """
     Creates and returns a connected SSHClient.
     If a password is supplied the connection is created using this password.
@@ -124,6 +128,9 @@ def create_ssh_client(host, port, username, password, private_key, passphrase):
     :param password: The password to authenticate
     :param private_key: A valid private RSA key as string
     :param passphrase: A passphrase to decrypt the private key, if the private key is encrypted
+    :param timeout: The timeout for the tcp connection. Defaults to 120.
+    :param auth_timeout: The authentication timeout in seconds. Defaults to 60.
+    :param banner_timeout: The banner timeout for the client in seconds. Defaults to 60.
 
     :return: A connected paramiko.SSHClient
 
@@ -132,13 +139,17 @@ def create_ssh_client(host, port, username, password, private_key, passphrase):
     """
     client = SSHClient()
     client.set_missing_host_key_policy(AutoAddPolicy())
+
     if password is not None:
         try:
             client.connect(
                 host,
                 port=port,
                 username=username,
-                password=password
+                password=password,
+                timeout=timeout,
+                auth_timeout=auth_timeout,
+                banner_timeout=banner_timeout
             )
         except socket.gaierror:
             raise ConnectionError('Could not connect to remote host "{}"'.format(host))
@@ -264,7 +275,10 @@ def check_remote_dir_available(access):
             username=auth['username'],
             password=auth.get('password'),
             private_key=auth.get('privateKey'),
-            passphrase=auth.get('passphrase')
+            passphrase=auth.get('passphrase'),
+            timeout=access.get('timeout', DEFAULT_TIMEOUT),
+            auth_timeout=access.get('authTimeout', DEFAULT_AUTH_TIMEOUT),
+            banner_timeout=access.get('bannerTimeout', DEFAULT_BANNER_TIMEOUT)
     ) as client:
         with client.open_sftp() as sftp:
             try:

@@ -7,7 +7,8 @@ from scp import SCPClient, SCPException
 
 from red_connector_ssh.schemas import DIR_SCHEMA, LISTING_SCHEMA
 from red_connector_ssh.helpers import create_ssh_client, fetch_directory, DEFAULT_PORT, graceful_error, \
-    send_directory, ssh_mkdir, cut_remote_user_dir, check_remote_dir_available
+    send_directory, ssh_mkdir, cut_remote_user_dir, check_remote_dir_available, DEFAULT_BANNER_TIMEOUT, DEFAULT_TIMEOUT, \
+    DEFAULT_AUTH_TIMEOUT
 
 RECEIVE_DIR_DESCRIPTION = 'Receive input dir from SSH server.'
 RECEIVE_DIR_VALIDATE_DESCRIPTION = 'Validate access data for receive-dir.'
@@ -44,7 +45,10 @@ def _receive_dir(access, local_dir_path, listing):
         username=auth['username'],
         password=auth.get('password'),
         private_key=auth.get('privateKey'),
-        passphrase=auth.get('passphrase')
+        passphrase=auth.get('passphrase'),
+        timeout=access.get('timeout', DEFAULT_TIMEOUT),
+        auth_timeout=access.get('authTimeout', DEFAULT_AUTH_TIMEOUT),
+        banner_timeout=access.get('bannerTimeout', DEFAULT_BANNER_TIMEOUT)
     ) as client:
         with SCPClient(client.get_transport()) as scp_client:
             if listing:
@@ -86,7 +90,10 @@ def _send_dir(access, local_dir_path, listing):
             username=auth['username'],
             password=auth.get('password'),
             private_key=auth.get('privateKey'),
-            passphrase=auth.get('passphrase')
+            passphrase=auth.get('passphrase'),
+            timeout=access.get('timeout', DEFAULT_TIMEOUT),
+            auth_timeout=access.get('authTimeout', DEFAULT_AUTH_TIMEOUT),
+            banner_timeout=access.get('bannerTimeout', DEFAULT_BANNER_TIMEOUT)
     ) as ssh_client:
         if listing:
             with ssh_client.open_sftp() as sftp_client:
@@ -115,7 +122,10 @@ def _send_dir_validate(access, listing):
             username=auth['username'],
             password=auth.get('password'),
             private_key=auth.get('privateKey'),
-            passphrase=auth.get('passphrase')
+            passphrase=auth.get('passphrase'),
+            timeout=access.get('timeout', DEFAULT_TIMEOUT),
+            auth_timeout=access.get('authTimeout', DEFAULT_AUTH_TIMEOUT),
+            banner_timeout=access.get('bannerTimeout', DEFAULT_BANNER_TIMEOUT)
     ):
         pass
 

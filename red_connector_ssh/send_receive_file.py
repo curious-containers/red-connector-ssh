@@ -6,7 +6,7 @@ import jsonschema
 
 from red_connector_ssh.schemas import FILE_SCHEMA
 from red_connector_ssh.helpers import create_ssh_client, ssh_mkdir, DEFAULT_PORT, graceful_error, cut_remote_user_dir, \
-    InvalidAuthenticationError
+    DEFAULT_BANNER_TIMEOUT, DEFAULT_TIMEOUT, DEFAULT_AUTH_TIMEOUT
 
 RECEIVE_FILE_DESCRIPTION = 'Receive input file from SSH server.'
 RECEIVE_FILE_VALIDATE_DESCRIPTION = 'Validate access data for receive-file.'
@@ -34,7 +34,10 @@ def _receive_file(access, local_file_path):
         username=auth['username'],
         password=auth.get('password'),
         private_key=auth.get('privateKey'),
-        passphrase=auth.get('passphrase')
+        passphrase=auth.get('passphrase'),
+        timeout=access.get('timeout', DEFAULT_TIMEOUT),
+        auth_timeout=access.get('authTimeout', DEFAULT_AUTH_TIMEOUT),
+        banner_timeout=access.get('bannerTimeout', DEFAULT_BANNER_TIMEOUT)
     ) as client:
         with client.open_sftp() as sftp:
             try:
@@ -59,7 +62,10 @@ def _receive_file_validate(access):
             username=auth['username'],
             password=auth.get('password'),
             private_key=auth.get('privateKey'),
-            passphrase=auth.get('passphrase')
+            passphrase=auth.get('passphrase'),
+            timeout=access.get('timeout', DEFAULT_TIMEOUT),
+            auth_timeout=access.get('authTimeout', DEFAULT_AUTH_TIMEOUT),
+            banner_timeout=access.get('bannerTimeout', DEFAULT_BANNER_TIMEOUT)
     ) as client:
         with client.open_sftp() as sftp:
             try:
@@ -87,7 +93,10 @@ def _send_file(access, local_file_path):
             username=auth['username'],
             password=auth.get('password'),
             private_key=auth.get('privateKey'),
-            passphrase=auth.get('passphrase')
+            passphrase=auth.get('passphrase'),
+            timeout=access.get('timeout', DEFAULT_TIMEOUT),
+            auth_timeout=access.get('authTimeout', DEFAULT_AUTH_TIMEOUT),
+            banner_timeout=access.get('bannerTimeout', DEFAULT_BANNER_TIMEOUT)
     ) as client:
         with client.open_sftp() as sftp:
             ssh_mkdir(sftp, remote_dir_path)
@@ -108,7 +117,10 @@ def _send_file_validate(access):
             username=auth['username'],
             password=auth.get('password'),
             private_key=auth.get('privateKey'),
-            passphrase=auth.get('passphrase')
+            passphrase=auth.get('passphrase'),
+            timeout=access.get('timeout', DEFAULT_TIMEOUT),
+            auth_timeout=access.get('authTimeout', DEFAULT_AUTH_TIMEOUT),
+            banner_timeout=access.get('bannerTimeout', DEFAULT_BANNER_TIMEOUT)
     ):
         pass
 

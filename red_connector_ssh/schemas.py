@@ -27,6 +27,9 @@ _BASE_SCHEMA = {
         'host': {'type': 'string'},
         'port': {'type': 'integer'},
         'auth': _AUTH_SCHEMA,
+        'timeout': {'type': 'number'},
+        'authTimeout': {'type': 'number'},
+        'bannerTimeout': {'type': 'number'}
     },
     'additionalProperties': False,
     'required': ['host', 'auth']
