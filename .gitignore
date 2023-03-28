@@ -5,3 +5,7 @@ __pycache__
 venv
 *.egg-info
 /pip-wheel-metadata
+/variables.yml
+/tests/access.json
+/tests/result-files/
+/tests/access-files/
