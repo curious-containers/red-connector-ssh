@@ -165,7 +165,7 @@ def create_ssh_client(host, port, username, password, private_key, passphrase, t
                 raise InvalidAuthenticationError('Could not connect to remote host "{}". Invalid key.'.format(host))
 
         try:
-            client.connect(host, username=username, pkey=pkey)
+            client.connect(host, port=port, username=username, pkey=pkey)
         except socket.gaierror:
             raise ConnectionError('Could not connect to remote host "{}"'.format(host))
     else:
