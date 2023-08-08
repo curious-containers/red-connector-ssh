@@ -184,7 +184,7 @@ def fetch_directory(listing, scp_client, base_directory, remote_directory, path=
     :param base_directory: The path to the base directory, where to create the fetched files and directories.
                            This base directory should already be present on the local filesystem.
     :param remote_directory: The path to the remote base directory from where to fetch the subfiles and directories.
-    :param path: A path specifying which subdirectory of remove_directory should be fetched and where to place it
+    :param path: A path specifying which subdirectory of remote_directory should be fetched and where to place it
                  under base_directory. The files are fetched from os.path.join(remote_directory, path) and placed
                  under os.path.join(base_directory, path)
 
@@ -221,7 +221,7 @@ def send_directory(listing, sftp_client, base_directory, remote_directory, path=
                            This base directory should already be present on the local filesystem and contain all files
                            and directories given in listing.
     :param remote_directory: The path to the remote base directory where to put the subfiles and directories.
-    :param path: A path specifying which subdirectory of remove_directory should be fetched and where to place it
+    :param path: A path specifying which subdirectory of remote_directory should be fetched and where to place it
                  under base_directory. The files are fetched from os.path.join(remote_directory, path) and placed
                  under os.path.join(base_directory, path)
 
